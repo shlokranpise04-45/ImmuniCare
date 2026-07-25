@@ -1,0 +1,128 @@
+const PDFDocument = require('pdfkit');
+
+const formatDate = (value) => {
+  if (!value) return 'N/A';
+  return new Date(value).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+  });
+};
+
+const generateVaccinationPdf = (profile, status) => {
+  const doc = new PDFDocument({ size: 'A4', margin: 40 });
+  const chunks = [];
+  doc.on('data', chunk => chunks.push(chunk));
+
+  doc.fontSize(20).fillColor('#0f172a').text('Vaccination Report', { align: 'center' });
+  doc.moveDown(0.5);
+  doc.fontSize(12).fillColor('#475569');
+  doc.text(`Patient: ${profile.name}`);
+  doc.text(`Date of birth: ${formatDate(profile.dob)}`);
+  doc.text(`Gender: ${profile.gender || 'N/A'}`);
+  doc.text(`Report date: ${formatDate(new Date())}`);
+  doc.moveDown();
+
+  doc.fillColor('#0f766e').fontSize(14).text('Summary', { underline: true });
+  doc.moveDown(0.25);
+  doc.fillColor('#0f172a').fontSize(11);
+  doc.text(`Completed vaccines: ${status.completed.length}`);
+  doc.text(`Overdue vaccines: ${status.overdue.length}`);
+  doc.text(`Upcoming vaccines: ${status.upcoming.length}`);
+  doc.moveDown();
+
+  const renderList = (title, items, renderRow) => {
+    doc.fillColor('#0f172a').fontSize(13).text(title);
+    doc.moveDown(0.2);
+    if (!items.length) {
+      doc.fillColor('#64748b').fontSize(11).text('None recorded.', { indent: 20 });
+      doc.moveDown();
+      return;
+    }
+    items.forEach(item => {
+      renderRow(item);
+      doc.moveDown(0.4);
+      if (doc.y > 720) {
+        doc.addPage();
+      }
+    });
+    doc.moveDown();
+  };
+
+  renderList('Completed Vaccinations', status.completed, (item) => {
+    doc.fillColor('#0f172a').fontSize(11).text(`${item.name} — ${item.dosesTaken}/${item.totalDoses} doses`, { indent: 20 });
+    doc.fillColor('#64748b').fontSize(10).text(`Last dose taken: ${formatDate(item.dateTaken)}`, { indent: 36 });
+  });
+
+  renderList('Overdue Vaccines', status.overdue, (item) => {
+    doc.fillColor('#991b1b').fontSize(11).text(`${item.name} — ${item.nextDoseLabel}`, { indent: 20 });
+    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${item.nextDose.ageMonths} months`, { indent: 36 });
+    doc.text(`Reason: overdue now`, { indent: 36 });
+  });
+
+  renderList('Upcoming Vaccines', status.upcoming, (item) => {
+    doc.fillColor('#ca8a04').fontSize(11).text(`${item.name} — ${item.nextDoseLabel}`, { indent: 20 });
+    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${item.nextDose.ageMonths} months`, { indent: 36 });
+    doc.text(`Status: due soon`, { indent: 36 });
+  });
+
+  doc.addPage();
+  doc.fillColor('#0f172a').fontSize(14).text('Important Notes', { underline: true });
+  doc.moveDown(0.2);
+  doc.fillColor('#475569').fontSize(11).text('This report is a summary of recorded and pending vaccinations for the selected patient. Please review overdue items and schedule follow-up doses as recommended.');
+  doc.end();
+
+  return new Promise((resolve) => {
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+};
+
+const sendReminderEmail = async (toEmail, profile, status) => {
+  const pdfBuffer = await generateVaccinationPdf(profile, status);
+  const pdfBase64 = pdfBuffer.toString('base64');
+  const overdueList = status.overdue.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${v.nextDose?.ageMonths ?? 'N/A'} months)</li>`).join('');
+  const upcomingList = status.upcoming.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${v.nextDose?.ageMonths ?? 'N/A'} months)</li>`).join('');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #102a43; line-height: 1.5;">
+      <h2 style="color: #0f766e;">Vaccination report for ${profile.name}</h2>
+      <p>This email includes a full PDF report attachment with the patient’s vaccination status, completed doses, overdue doses, and upcoming recommendations.</p>
+      ${status.overdue.length ? `<h3 style="color: #991b1b;">Overdue vaccines</h3><ul>${overdueList}</ul>` : ''}
+      ${status.upcoming.length ? `<h3 style="color: #ca8a04;">Upcoming vaccines</h3><ul>${upcomingList}</ul>` : ''}
+      <p style="margin-top: 16px; color: #475569;">Open the attached PDF to review the complete vaccination summary and next steps.</p>
+    </div>
+  `;
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { email: process.env.EMAIL_FROM, name: 'Vaccine Tracker' },
+        to: [{ email: toEmail }],
+        subject: `Vaccination report — ${profile.name}`,
+        htmlContent: html,
+        attachment: [
+          {
+            content: pdfBase64,
+            name: `${profile.name.replace(/\s+/g, '_')}_vaccination_report.pdf`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Email send failed:', response.status, errText);
+      return { success: false, message: `Email service rejected the request (${response.status}): ${errText}` };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Email send failed:', err);
+    return { success: false, message: `Email send failed: ${err.message}` };
+  }
+};
+
+module.exports = { sendReminderEmail };
