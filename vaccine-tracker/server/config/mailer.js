@@ -7,6 +7,15 @@ const formatDate = (value) => {
   });
 };
 
+const formatMonths = (months) => {
+  if (months == null) return 'N/A';
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  if (years === 0) return `${rem}m`;
+  if (rem === 0) return `${years}y`;
+  return `${years}y ${rem}m`;
+};
+
 const generateVaccinationPdf = (profile, status) => {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const chunks = [];
@@ -54,13 +63,13 @@ const generateVaccinationPdf = (profile, status) => {
 
   renderList('Overdue Vaccines', status.overdue, (item) => {
     doc.fillColor('#991b1b').fontSize(11).text(`${item.name} — ${item.nextDoseLabel}`, { indent: 20 });
-    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${item.nextDose.ageMonths} months`, { indent: 36 });
+    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${formatMonths(item.nextDose.ageMonths)}`, { indent: 36 });
     doc.text(`Reason: overdue now`, { indent: 36 });
   });
 
   renderList('Upcoming Vaccines', status.upcoming, (item) => {
     doc.fillColor('#ca8a04').fontSize(11).text(`${item.name} — ${item.nextDoseLabel}`, { indent: 20 });
-    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${item.nextDose.ageMonths} months`, { indent: 36 });
+    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${formatMonths(item.nextDose.ageMonths)}`, { indent: 36 });
     doc.text(`Status: due soon`, { indent: 36 });
   });
 
@@ -78,8 +87,8 @@ const generateVaccinationPdf = (profile, status) => {
 const sendReminderEmail = async (toEmail, profile, status) => {
   const pdfBuffer = await generateVaccinationPdf(profile, status);
   const pdfBase64 = pdfBuffer.toString('base64');
-  const overdueList = status.overdue.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${v.nextDose?.ageMonths ?? 'N/A'} months)</li>`).join('');
-  const upcomingList = status.upcoming.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${v.nextDose?.ageMonths ?? 'N/A'} months)</li>`).join('');
+  const overdueList = status.overdue.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
+  const upcomingList = status.upcoming.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #102a43; line-height: 1.5;">

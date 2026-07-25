@@ -13,6 +13,14 @@ export function getAgeLabel(dob) {
   return `${years}y ${months}m`;
 }
 
+export function formatMonths(months) {
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  if (years === 0) return `${rem}m`;
+  if (rem === 0) return `${years}y`;
+  return `${years}y ${rem}m`;
+}
+
 export function formatDate(date) {
   return new Date(date).toLocaleDateString('en-GB', {
     day: '2-digit',

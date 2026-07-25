@@ -76,7 +76,7 @@ function getVaccineStatus(profile, records) {
  
     if (ageReached && intervalFloorMet) {
       overdue.push(entry);
-    } else if (nextDose.ageMonths - ageMonths <= 1 || (dosesTaken > 0 && !intervalFloorMet)) {
+    } else if (nextDose.ageMonths - ageMonths <= 6 || (dosesTaken > 0 && !intervalFloorMet)) {
      
       upcoming.push(entry);
     }
