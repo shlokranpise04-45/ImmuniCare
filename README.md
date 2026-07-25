@@ -1,6 +1,6 @@
 # ImmuniCare 💉
  
-A digital immunization tracker built for families to manage vaccination records — reimagined from a college mini-project into a full-stack, deployed web app for a 24-hour hackathon.
+A digital immunization tracker built for families to manage vaccination records - designed and built end-to-end as a full-stack, deployed web app during a 24-hour hackathon.
  
 🎥 **Demo video:** https://youtu.be/Vx4QNKTqGfQ
 🌐 **Live app:** https://immunicare-844de.web.app
@@ -62,8 +62,8 @@ Shlok Ranpise
  
 ## Roadmap 
  
--Expand the vaccine reference dataset beyond the current 25, covering more regional/optional vaccines (e.g. travel vaccines, seasonal flu, region-specific recommendations)
--Multi-language support, since vaccination info needs to reach a broad, non-English-first audience
--Introduce vaccine categorization (e.g. Mandatory vs Optional, Infant vs Adult, Travel vs Routine) for easier filtering and navigation as the dataset grows
--SMS/WhatsApp reminders alongside email, for users who don't check inbox regularly
--Forgot Password / account recovery flow, so users aren't locked out if they lose credentials
+- Expand the vaccine reference dataset beyond the current 25, covering more regional/optional vaccines (e.g. travel vaccines, seasonal flu, region-specific recommendations)
+- Multi-language support, since vaccination info needs to reach a broad, non-English-first audience
+- Introduce vaccine categorization (e.g. Mandatory vs Optional, Infant vs Adult, Travel vs Routine) for easier filtering and navigation as the dataset grows
+- SMS/WhatsApp reminders alongside email, for users who don't check inbox regularly
+- Forgot Password / account recovery flow, so users aren't locked out if they lose credentials
