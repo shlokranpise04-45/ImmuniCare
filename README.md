@@ -12,8 +12,6 @@ A digital immunization tracker built for families to manage vaccination records 
  
 ImmuniCare lets a user manage vaccination records for their entire family from one account — multiple profiles, multi-dose tracking, automatic status detection (Completed / Upcoming / Overdue), and one-click PDF vaccination reports sent straight to their inbox.
  
-Originally a JavaFX + MySQL desktop mini-project, rebuilt as a MERN stack web app with email automation and full cloud deployment.
- 
 ## Features
  
 - 🔐 Secure authentication (JWT-based login/register)
