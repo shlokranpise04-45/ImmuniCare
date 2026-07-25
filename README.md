@@ -57,12 +57,13 @@ npm run dev
 ## Team
  
 Built by a team of 2 in 24 hours for Innovo Hack Chapter 1.
-Prranjal Sankhe 
+Prranjal Sankhe and
 Shlok Ranpise
  
 ## Roadmap 
  
-- Fix mobile login edge case
-- Build out the landing page as a full component
-- Finish remaining UI passes (vaccine rows, status badges, chart, modals)
-- Flatten repo folder structure
+-Expand the vaccine reference dataset beyond the current 25, covering more regional/optional vaccines (e.g. travel vaccines, seasonal flu, region-specific recommendations)
+-Multi-language support, since vaccination info needs to reach a broad, non-English-first audience
+-Introduce vaccine categorization (e.g. Mandatory vs Optional, Infant vs Adult, Travel vs Routine) for easier filtering and navigation as the dataset grows
+-SMS/WhatsApp reminders alongside email, for users who don't check inbox regularly
+-Forgot Password / account recovery flow, so users aren't locked out if they lose credentials
