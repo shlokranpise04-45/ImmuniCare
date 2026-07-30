@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import api from '../services/api';
  
-// Mirrors server/data/vaccineReference.js — name + totalDoses + gender only,
-// just enough to drive this form's dropdowns without a network call.
-// IMPORTANT: if you add/remove a vaccine in vaccineReference.js, update this list too.
+
 const VACCINES = [
   { name: 'BCG', totalDoses: 1, gender: 'All' },
   { name: 'Hepatitis B', totalDoses: 3, gender: 'All' },
@@ -38,17 +36,27 @@ export default function AddVaccineModal({ profileId, profile, onClose, onAdded }
     v => v.gender === 'All' || v.gender === profile?.gender
   );
  
-  const [vaccineName, setVaccineName] = useState(availableVaccines[0].name);
+  const [vaccineName, setVaccineName] = useState(availableVaccines[0]?.name || '');
+  const [searchQuery, setSearchQuery] = useState(availableVaccines[0]?.name || '');
+  const [isFocused, setIsFocused] = useState(false);
   const [doseNumber, setDoseNumber] = useState(1);
   const [dateTaken, setDateTaken] = useState('');
   const [error, setError] = useState('');
  
-  const selectedVaccine = availableVaccines.find(v => v.name === vaccineName);
-  const doseOptions = Array.from({ length: selectedVaccine.totalDoses }, (_, i) => i + 1);
+  const selectedVaccine = availableVaccines.find(v => v.name === vaccineName) || availableVaccines[0];
+  const doseOptions = Array.from({ length: selectedVaccine?.totalDoses || 0 }, (_, i) => i + 1);
+  const filteredVaccines = availableVaccines.filter(v => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    const name = v.name.toLowerCase();
+    return name.startsWith(query) || name.includes(query);
+  });
  
   const handleVaccineChange = (name) => {
     setVaccineName(name);
+    setSearchQuery(name);
     setDoseNumber(1); // reset dose number whenever the vaccine changes
+    setIsFocused(false);
   };
  
   const handleSubmit = async () => {
@@ -68,15 +76,39 @@ export default function AddVaccineModal({ profileId, profile, onClose, onAdded }
         <h3 style={{ marginBottom: 16 }}>Add vaccination record</h3>
  
         <label className="field-label">Vaccine</label>
-        <select value={vaccineName} onChange={(e) => handleVaccineChange(e.target.value)}>
-          {availableVaccines.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
-        </select>
+        <input
+          type="text"
+          placeholder="Search vaccine name"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 120)}
+        />
+        {isFocused && (
+          <div className="search-suggestions">
+            {filteredVaccines.length > 0 ? (
+              filteredVaccines.map(v => (
+                <button
+                  key={v.name}
+                  type="button"
+                  className="search-suggestion"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleVaccineChange(v.name)}
+                >
+                  {v.name}
+                </button>
+              ))
+            ) : (
+              <div className="search-suggestion search-suggestion--empty">No matching vaccines</div>
+            )}
+          </div>
+        )}
  
         <label className="field-label">Dose</label>
         <select value={doseNumber} onChange={(e) => setDoseNumber(Number(e.target.value))}>
           {doseOptions.map(n => (
             <option key={n} value={n}>
-              {selectedVaccine.totalDoses === 1 ? 'Single dose' : `Dose ${n} of ${selectedVaccine.totalDoses}`}
+              {selectedVaccine?.totalDoses === 1 ? 'Single dose' : `Dose ${n} of ${selectedVaccine?.totalDoses || 0}`}
             </option>
           ))}
         </select>

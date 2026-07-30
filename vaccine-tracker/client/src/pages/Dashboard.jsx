@@ -6,6 +6,7 @@ import ProfileCard from '../components/ProfileCard';
  
 export default function Dashboard() {
   const [profiles, setProfiles] = useState([]);
+  const [profileStats, setProfileStats] = useState({});
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
@@ -17,6 +18,23 @@ export default function Dashboard() {
   const loadProfiles = async () => {
     const { data } = await api.get('/profiles');
     setProfiles(data);
+
+    const stats = await Promise.all(
+      data.map(async (profile) => {
+        try {
+          const { data: recordData } = await api.get(`/records/${profile._id}`);
+          return [profile._id, {
+            overdue: recordData.status?.overdue?.length || 0,
+            upcoming: recordData.status?.upcoming?.length || 0,
+            completed: recordData.status?.completed?.length || 0,
+          }];
+        } catch {
+          return [profile._id, { overdue: 0, upcoming: 0, completed: 0 }];
+        }
+      })
+    );
+
+    setProfileStats(Object.fromEntries(stats));
   };
  
   useEffect(() => { loadProfiles(); }, []);
@@ -75,6 +93,7 @@ export default function Dashboard() {
             <ProfileCard
               key={p._id}
               profile={p}
+              stats={profileStats[p._id]}
               onOpen={(profile) => navigate(`/profile/${profile._id}`)}
               onDelete={handleDelete}
             />

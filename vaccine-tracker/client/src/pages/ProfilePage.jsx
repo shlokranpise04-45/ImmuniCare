@@ -39,8 +39,8 @@ export default function ProfilePage() {
   return (
     <div className="container">
       <div className="card">
-        <button className="btn btn-ghost" onClick={() => navigate('/dashboard')}>← Back</button>
-        <h2 style={{ marginTop: 12 }}>{profile.name}</h2>
+        <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={() => navigate('/dashboard')}>← Back</button>
+        <h2 style={{ marginTop: 4 }}>{profile.name}</h2>
         <p className="empty-state">Age: {getAgeLabel(profile.dob)}</p>
         <VaccineChart status={status} />
       </div>

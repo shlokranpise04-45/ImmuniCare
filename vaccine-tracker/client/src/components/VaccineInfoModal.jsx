@@ -37,15 +37,54 @@ const IMPORTANCE_STAMP = {
  
 export default function VaccineInfoModal({ onClose }) {
   const [selected, setSelected] = useState(VACCINE_INFO[0]);
+  const [searchQuery, setSearchQuery] = useState(VACCINE_INFO[0].name);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const filteredVaccines = VACCINE_INFO.filter(v => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    const name = v.name.toLowerCase();
+    return name.startsWith(query) || name.includes(query);
+  });
+
+  const handleSelectVaccine = (vaccine) => {
+    setSelected(vaccine);
+    setSearchQuery(vaccine.name);
+    setIsFocused(false);
+  };
  
   return (
     <div className="modal-overlay">
       <div className="modal-box" style={{ width: 460 }}>
         <h3 style={{ marginBottom: 12 }}>Vaccine information</h3>
  
-        <select onChange={(e) => setSelected(VACCINE_INFO.find(v => v.name === e.target.value))}>
-          {VACCINE_INFO.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
-        </select>
+        <input
+          type="text"
+          placeholder="Search vaccine name"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 120)}
+        />
+        {isFocused && (
+          <div className="search-suggestions">
+            {filteredVaccines.length > 0 ? (
+              filteredVaccines.map(v => (
+                <button
+                  key={v.name}
+                  type="button"
+                  className="search-suggestion"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelectVaccine(v)}
+                >
+                  {v.name}
+                </button>
+              ))
+            ) : (
+              <div className="search-suggestion search-suggestion--empty">No matching vaccines</div>
+            )}
+          </div>
+        )}
  
         <div className="card vaccine-info-card">
           <div className="vaccine-info-card__head">
