@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PET_VACCINES } from '../data/petVaccines';
  
  
 const VACCINE_INFO = [
@@ -35,12 +36,15 @@ const IMPORTANCE_STAMP = {
   Routine: 'done',
 };
  
-export default function VaccineInfoModal({ onClose }) {
-  const [selected, setSelected] = useState(VACCINE_INFO[0]);
-  const [searchQuery, setSearchQuery] = useState(VACCINE_INFO[0].name);
+export default function VaccineInfoModal({ onClose, profile }) {
+  const vaccines = profile?.category === 'Pet'
+    ? PET_VACCINES.filter(v => v.petType === profile.petType)
+    : VACCINE_INFO;
+  const [selected, setSelected] = useState(vaccines[0]);
+  const [searchQuery, setSearchQuery] = useState(vaccines[0].name);
   const [isFocused, setIsFocused] = useState(false);
 
-  const filteredVaccines = VACCINE_INFO.filter(v => {
+  const filteredVaccines = vaccines.filter(v => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
     const name = v.name.toLowerCase();
@@ -92,7 +96,7 @@ export default function VaccineInfoModal({ onClose }) {
             <span className={`stamp ${IMPORTANCE_STAMP[selected.importance]}`}>{selected.importance}</span>
           </div>
  
-          {selected.gender !== 'All' && (
+          {selected.gender && selected.gender !== 'All' && (
             <span className="relationship-stamp" style={{ marginLeft: 0, marginBottom: 10, display: 'inline-block' }}>
               {selected.gender} only
             </span>

@@ -24,7 +24,7 @@ export default function ProfileCard({ profile, stats, onOpen, onDelete }) {
           <strong>{profile.name}</strong>
           <div className="profile-list-item__meta" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>{getAgeLabel(profile.dob)}</span>
-            <span className="relationship-stamp">{profile.relationship}</span>
+            <span className="relationship-stamp">{profile.category === 'Pet' ? `${profile.petType}${profile.breed ? ` · ${profile.breed}` : ''}` : profile.relationship}</span>
           </div>
           <div className="profile-card-stats">
             <span className="profile-card-stat badge-overdue">{stats?.overdue || 0} overdue</span>
@@ -62,4 +62,3 @@ export default function ProfileCard({ profile, stats, onOpen, onDelete }) {
     </>
   );
 }
- 

@@ -590,3 +590,24 @@ input:focus, select:focus { outline: 2px solid rgba(47, 111, 94, 0.18); border-c
   color: var(--ink-soft);
   margin: 12px 0 -4px;
 }
+.profile-switch {
+  display: inline-flex;
+  margin: 20px 4px 8px;
+  padding: 4px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: rgba(250, 246, 236, 0.8);
+}
+.profile-switch__option {
+  min-width: 104px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.profile-switch__option.active { background: var(--ink); color: var(--paper-light); }
+.field-label__optional { font-weight: 400; text-transform: none; letter-spacing: 0; }

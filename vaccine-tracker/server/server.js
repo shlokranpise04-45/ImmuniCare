@@ -2,6 +2,7 @@ const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 require('dotenv').config();
+console.log("MONGO_URI =", process.env.MONGO_URI);
 const express = require('express');
 
 const cors = require('cors');

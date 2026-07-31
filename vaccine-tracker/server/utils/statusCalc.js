@@ -1,4 +1,5 @@
 const vaccineReference = require('../data/vaccineReference');
+const petVaccineReference = require('../data/petVaccineReference');
  
 
 const SITUATIONAL_VACCINE_IDS = new Set(['rabies_pep', 'tt_pregnancy']);
@@ -19,6 +20,9 @@ function daysBetween(dateA, dateB) {
  
 
 function getVaccineStatus(profile, records) {
+  const reference = profile.category === 'Pet'
+    ? petVaccineReference.filter(vaccine => vaccine.petType === profile.petType)
+    : vaccineReference;
   const ageMonths = getAgeInMonths(profile.dob);
   const today = new Date();
  
@@ -26,9 +30,9 @@ function getVaccineStatus(profile, records) {
   const upcoming = [];
   const overdue = [];
  
-  for (const vaccine of vaccineReference) {
+  for (const vaccine of reference) {
 
-    if (vaccine.gender !== 'All' && vaccine.gender !== profile.gender) continue;
+    if (profile.category !== 'Pet' && vaccine.gender !== 'All' && vaccine.gender !== profile.gender) continue;
  
     
     const recordsForVaccine = records
@@ -87,4 +91,3 @@ function getVaccineStatus(profile, records) {
 }
  
 module.exports = { getAgeInMonths, getVaccineStatus };
- 

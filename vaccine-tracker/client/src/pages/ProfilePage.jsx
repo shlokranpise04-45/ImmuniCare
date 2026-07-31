@@ -86,7 +86,7 @@ export default function ProfilePage() {
         {notifyMsg && <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 8 }}>{notifyMsg}</p>}
       </div>
 
-      {showInfo && <VaccineInfoModal onClose={() => setShowInfo(false)} />}
+      {showInfo && <VaccineInfoModal profile={profile} onClose={() => setShowInfo(false)} />}
       {showAddVaccine && (
         <AddVaccineModal profileId={id} profile={profile} onClose={() => setShowAddVaccine(false)} onAdded={load} />
       )}

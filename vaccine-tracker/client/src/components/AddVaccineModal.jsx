@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from '../services/api';
+import { PET_VACCINES } from '../data/petVaccines';
  
 
 const VACCINES = [
@@ -31,10 +32,9 @@ const VACCINES = [
 ];
  
 export default function AddVaccineModal({ profileId, profile, onClose, onAdded }) {
-  // Only show vaccines that apply to this profile's gender
-  const availableVaccines = VACCINES.filter(
-    v => v.gender === 'All' || v.gender === profile?.gender
-  );
+  const availableVaccines = profile?.category === 'Pet'
+    ? PET_VACCINES.filter(v => v.petType === profile?.petType)
+    : VACCINES.filter(v => v.gender === 'All' || v.gender === profile?.gender);
  
   const [vaccineName, setVaccineName] = useState(availableVaccines[0]?.name || '');
   const [searchQuery, setSearchQuery] = useState(availableVaccines[0]?.name || '');

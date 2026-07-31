@@ -12,8 +12,15 @@ const profileSchema = new mongoose.Schema({
   relationship: {
     type: String,
     enum: ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other'],
-    required: true,
+    required: function requiredRelationship() { return this.category === 'Family'; },
   },
+  category: { type: String, enum: ['Family', 'Pet'], default: 'Family', required: true },
+  petType: {
+    type: String,
+    enum: ['Dog', 'Cat'],
+    required: function requiredPetType() { return this.category === 'Pet'; },
+  },
+  breed: { type: String, trim: true },
 }, { timestamps: true });
  
 module.exports = mongoose.model('Profile', profileSchema);
