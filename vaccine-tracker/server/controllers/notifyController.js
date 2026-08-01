@@ -12,6 +12,7 @@ exports.sendNow = async (req, res) => {
     if (!profile) return res.status(404).json({ message: 'Profile not found' });
 
     const user = await User.findById(req.userId);
+    if (!user?.email) return res.status(400).json({ message: 'Your account does not have a valid recipient email address.' });
     const records = await VaccineRecord.find({ profileId: profile._id });
     const status = getVaccineStatus(profile, records);
 

@@ -17,6 +17,8 @@ export default function Dashboard() {
   const [relationship, setRelationship] = useState('');
   const [petType, setPetType] = useState('');
   const [breed, setBreed] = useState('');
+  const [formError, setFormError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -44,10 +46,28 @@ export default function Dashboard() {
 
   useEffect(() => { loadProfiles(category); }, [category]);
 
-  const handleAddProfile = async () => {
-    if (!name || !dob || !gender || (category === 'Family' && !relationship) || (category === 'Pet' && !petType)) return;
-    await api.post('/profiles', { name, dob, gender, relationship, category, petType, breed });
-    resetForm(); setShowAdd(false); loadProfiles();
+  const handleAddProfile = async (event) => {
+    event.preventDefault();
+    if (!name || !dob || !gender || (category === 'Family' && !relationship) || (category === 'Pet' && !petType)) {
+      setFormError(`Please complete all required ${isPets ? 'pet' : 'profile'} fields.`);
+      return;
+    }
+    setIsSaving(true);
+    setFormError('');
+    try {
+      const payload = isPets
+        ? { name, dob, gender, petType, ...(breed.trim() ? { breed: breed.trim() } : {}) }
+        : { name, dob, gender, relationship };
+      await api.post(isPets ? '/pets' : '/profiles', payload);
+      resetForm();
+      setShowAdd(false);
+      await loadProfiles(category);
+    } catch (err) {
+      console.error('Failed to create profile:', err);
+      setFormError(err.response?.data?.message || 'Could not save this profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -96,7 +116,7 @@ export default function Dashboard() {
 
       {showAdd && (
         <div className="modal-overlay">
-          <div className="modal-box">
+          <form className="modal-box" onSubmit={handleAddProfile}>
             <h3 style={{ marginBottom: 16 }}>Add new {isPets ? 'pet' : 'profile'}</h3>
             <label className="field-label">Name</label>
             <input placeholder={isPets ? 'Pet name' : 'Full name'} value={name} onChange={(e) => setName(e.target.value)} />
@@ -114,10 +134,11 @@ export default function Dashboard() {
               <select value={relationship} onChange={(e) => setRelationship(e.target.value)}><option value="">Select relationship</option>{FAMILY_RELATIONSHIPS.map(item => <option key={item} value={item}>{item}</option>)}</select>
             </>}
             <div className="topbar-actions" style={{ marginTop: 16 }}>
-              <button className="btn btn-primary" onClick={handleAddProfile}>Add {isPets ? 'pet' : 'profile'}</button>
-              <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+              <button className="btn btn-primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving…' : `Add ${isPets ? 'pet' : 'profile'}`}</button>
+              <button className="btn btn-ghost" type="button" onClick={() => setShowAdd(false)}>Cancel</button>
             </div>
-          </div>
+            {formError && <p className="form-error" role="alert">{formError}</p>}
+          </form>
         </div>
       )}
     </div>

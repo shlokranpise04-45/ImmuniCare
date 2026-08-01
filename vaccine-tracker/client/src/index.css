@@ -611,3 +611,9 @@ input:focus, select:focus { outline: 2px solid rgba(47, 111, 94, 0.18); border-c
 }
 .profile-switch__option.active { background: var(--ink); color: var(--paper-light); }
 .field-label__optional { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.form-error { color: var(--stamp-red); font-size: 13px; margin: 12px 0 0; }
+.section-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pet-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 12px; }
+.pet-form-grid input, .pet-form-grid select { margin: 0; }
+.pet-form-grid__wide { grid-column: 1 / -1; }
+@media (max-width: 640px) { .pet-form-grid { grid-template-columns: 1fr; } .pet-form-grid__wide { grid-column: auto; } }

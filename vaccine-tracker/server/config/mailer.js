@@ -1,4 +1,21 @@
+require('dotenv').config();
 const PDFDocument = require('pdfkit');
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getBrevoConfig() {
+  const apiKey = process.env.BREVO_API_KEY?.trim();
+  const fromEmail = process.env.EMAIL_FROM?.trim();
+  const fromName = process.env.EMAIL_FROM_NAME?.trim() || 'ImmuniCare';
+
+  if (!apiKey || apiKey === 'your_brevo_api_key_here') {
+    return { error: 'Brevo is not configured. Set BREVO_API_KEY to an active Brevo transactional-email API key in server/.env.' };
+  }
+  if (!fromEmail || !EMAIL_PATTERN.test(fromEmail)) {
+    return { error: 'Brevo sender is not configured. Set EMAIL_FROM to a valid, verified sender email address in server/.env.' };
+  }
+  return { apiKey, fromEmail, fromName };
+}
 
 const formatDate = (value) => {
   if (!value) return 'N/A';
@@ -19,7 +36,11 @@ const formatMonths = (months) => {
 const generateVaccinationPdf = (profile, status) => {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const chunks = [];
-  doc.on('data', chunk => chunks.push(chunk));
+  const pdf = new Promise((resolve, reject) => {
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+  });
 
   doc.fontSize(20).fillColor('#0f172a').text('Vaccination Report', { align: 'center' });
   doc.moveDown(0.5);
@@ -78,19 +99,26 @@ const generateVaccinationPdf = (profile, status) => {
   doc.moveDown(0.2);
   doc.fillColor('#475569').fontSize(11).text('This report is a summary of recorded and pending vaccinations for the selected patient. Please review overdue items and schedule follow-up doses as recommended.');
   doc.end();
-
-  return new Promise((resolve) => {
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-  });
+  return pdf;
 };
 
 const sendReminderEmail = async (toEmail, profile, status) => {
-  const pdfBuffer = await generateVaccinationPdf(profile, status);
-  const pdfBase64 = pdfBuffer.toString('base64');
-  const overdueList = status.overdue.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
-  const upcomingList = status.upcoming.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
+  const config = getBrevoConfig();
+  if (config.error) {
+    console.error('Email configuration error:', config.error);
+    return { success: false, message: config.error };
+  }
+  if (!toEmail || !EMAIL_PATTERN.test(toEmail)) {
+    return { success: false, message: 'Recipient email is invalid. Update the account email before sending a report.' };
+  }
 
-  const html = `
+  try {
+    const pdfBuffer = await generateVaccinationPdf(profile, status);
+    const pdfBase64 = pdfBuffer.toString('base64');
+    const overdueList = status.overdue.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
+    const upcomingList = status.upcoming.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
+
+    const html = `
     <div style="font-family: Arial, sans-serif; color: #102a43; line-height: 1.5;">
       <h2 style="color: #0f766e;">Vaccination report for ${profile.name}</h2>
       <p>This email includes a full PDF report attachment with the patient’s vaccination status, completed doses, overdue doses, and upcoming recommendations.</p>
@@ -98,18 +126,16 @@ const sendReminderEmail = async (toEmail, profile, status) => {
       ${status.upcoming.length ? `<h3 style="color: #ca8a04;">Upcoming vaccines</h3><ul>${upcomingList}</ul>` : ''}
       <p style="margin-top: 16px; color: #475569;">Open the attached PDF to review the complete vaccination summary and next steps.</p>
     </div>
-  `;
-
-  try {
+    `;
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'api-key': process.env.BREVO_API_KEY,
+        'api-key': config.apiKey,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        sender: { email: process.env.EMAIL_FROM, name: 'Vaccine Tracker' },
+        sender: { email: config.fromEmail, name: config.fromName },
         to: [{ email: toEmail }],
         subject: `Vaccination report — ${profile.name}`,
         htmlContent: html,
@@ -125,6 +151,12 @@ const sendReminderEmail = async (toEmail, profile, status) => {
     if (!response.ok) {
       const errText = await response.text();
       console.error('Email send failed:', response.status, errText);
+      if (response.status === 401) {
+        return { success: false, message: 'Brevo rejected the API key. Set BREVO_API_KEY to an active Brevo API key (not a Resend key) and restart the server.' };
+      }
+      if ((response.status === 400 || response.status === 403) && /sender|from|verified/i.test(errText)) {
+        return { success: false, message: `Brevo rejected EMAIL_FROM (${config.fromEmail}). Verify this sender email or its domain in Brevo before sending.` };
+      }
       return { success: false, message: `Email service rejected the request (${response.status}): ${errText}` };
     }
     return { success: true };

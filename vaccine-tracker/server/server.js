@@ -2,7 +2,6 @@ const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 require('dotenv').config();
-console.log("MONGO_URI =", process.env.MONGO_URI);
 const express = require('express');
 
 const cors = require('cors');
@@ -13,6 +12,9 @@ const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const recordRoutes = require('./routes/recordRoutes');
 const notifyRoutes = require('./routes/notifyRoutes');
+const petRoutes = require('./routes/petRoutes');
+const petEntryRoutes = require('./routes/petEntryRoutes');
+const familyEntryRoutes = require('./routes/familyEntryRoutes');
 
 const app = express();
 
@@ -23,6 +25,9 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRoutes);
+app.use('/api/profiles', familyEntryRoutes);
+app.use('/api/pets', petRoutes);
+app.use('/api/pets', petEntryRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/notify', notifyRoutes);
 

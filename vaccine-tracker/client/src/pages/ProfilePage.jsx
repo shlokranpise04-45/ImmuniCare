@@ -6,6 +6,8 @@ import VaccineRow from '../components/VaccineRow';
 import VaccineChart from '../components/VaccineChart';
 import VaccineInfoModal from '../components/VaccineInfoModal';
 import AddVaccineModal from '../components/AddVaccineModal';
+import PetCarePanel from '../components/PetCarePanel';
+import FamilyCarePanel from '../components/FamilyCarePanel';
 
 export default function ProfilePage() {
   const { id } = useParams();
@@ -35,6 +37,8 @@ export default function ProfilePage() {
   };
 
   if (!profile || !status) return <div className="container">Loading...</div>;
+
+  const updateProfile = (updatedProfile) => setProfile(updatedProfile);
 
   return (
     <div className="container">
@@ -85,6 +89,10 @@ export default function ProfilePage() {
         </div>
         {notifyMsg && <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 8 }}>{notifyMsg}</p>}
       </div>
+
+      {profile.category !== 'Pet' && <FamilyCarePanel profile={profile} onUpdated={updateProfile} />}
+
+      {profile.category === 'Pet' && <PetCarePanel pet={profile} onUpdated={updateProfile} />}
 
       {showInfo && <VaccineInfoModal profile={profile} onClose={() => setShowInfo(false)} />}
       {showAddVaccine && (
