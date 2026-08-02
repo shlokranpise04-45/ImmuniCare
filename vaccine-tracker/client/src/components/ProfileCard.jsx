@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getAgeLabel } from '../utils/dateHelpers';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
  
 export default function ProfileCard({ profile, stats, onOpen, onDelete }) {
   const initial = profile.name?.charAt(0)?.toUpperCase() || '?';
@@ -45,20 +46,12 @@ export default function ProfileCard({ profile, stats, onOpen, onDelete }) {
       </div>
     </div>
 
-    {showConfirm && (
-      <div className="modal-overlay" onClick={() => setShowConfirm(false)}>
-        <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
-          <h3 style={{ marginBottom: 8 }}>ImmuniCare says</h3>
-          <p style={{ margin: '0 0 16px', color: 'var(--ink-soft)' }}>
-            Are you sure you want to delete this profile? All data will be lost.
-          </p>
-          <div className="topbar-actions">
-            <button className="btn btn-red" onClick={confirmDelete}>Delete profile</button>
-            <button className="btn btn-ghost" onClick={() => setShowConfirm(false)}>Cancel</button>
-          </div>
-        </div>
-      </div>
-    )}
+    {showConfirm && <ConfirmDeleteModal
+      message="Are you sure you want to delete this profile? All data will be lost."
+      confirmLabel="Delete profile"
+      onConfirm={confirmDelete}
+      onCancel={() => setShowConfirm(false)}
+    />}
     </>
   );
 }

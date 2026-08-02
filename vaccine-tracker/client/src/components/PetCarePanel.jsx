@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 const RECORD_TYPES = [
   ['medical', 'Medical history'],
@@ -21,6 +22,8 @@ export default function PetCarePanel({ pet, onUpdated }) {
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
   const [editValues, setEditValues] = useState({ name: pet.name, dob: pet.dob?.slice(0, 10), gender: pet.gender, petType: pet.petType, breed: pet.breed || '' });
+  const [entryPendingDelete, setEntryPendingDelete] = useState(null);
+  const [isDeletingEntry, setIsDeletingEntry] = useState(false);
 
   const loadEntries = async () => {
     try {
@@ -48,11 +51,15 @@ export default function PetCarePanel({ pet, onUpdated }) {
   };
 
   const removeEntry = async (entryId) => {
+    setIsDeletingEntry(true);
     try {
       await api.delete(`/pets/${pet._id}/entries/${entryId}`);
       await loadEntries();
+      setEntryPendingDelete(null);
     } catch (err) {
       setMessage(err.response?.data?.message || 'Could not delete this pet record.');
+    } finally {
+      setIsDeletingEntry(false);
     }
   };
 
@@ -101,10 +108,20 @@ export default function PetCarePanel({ pet, onUpdated }) {
         {entries.length === 0 ? <p className="empty-state">No medical history, weight records, documents, or notes yet.</p> : <div className="record-list">
           {entries.map(entry => <div className="record-item" key={entry._id}>
             <div><strong>{entry.title}</strong><div className="record-meta">{RECORD_TYPES.find(([value]) => value === entry.type)?.[1]} · {new Date(entry.date).toLocaleDateString()}{entry.weightKg !== undefined ? ` · ${entry.weightKg} kg` : ''}</div>{entry.details && <div className="record-meta">{entry.details}</div>}{entry.documentUrl && <a className="text-link" href={entry.documentUrl} target="_blank" rel="noreferrer">Open document</a>}</div>
-            <button className="btn btn-ghost" type="button" onClick={() => removeEntry(entry._id)}>Delete</button>
+            <button className="btn btn-ghost" type="button" onClick={() => {
+  console.log("Delete clicked", entry);
+  setEntryPendingDelete(entry);
+}}>Delete</button>
           </div>)}
         </div>}
       </div>
+      {entryPendingDelete && <ConfirmDeleteModal
+        message="Are you sure you want to delete this record? This action cannot be undone."
+        confirmLabel="Delete record"
+        onConfirm={() => removeEntry(entryPendingDelete._id)}
+        onCancel={() => setEntryPendingDelete(null)}
+        isDeleting={isDeletingEntry}
+      />}
     </>
   );
 }

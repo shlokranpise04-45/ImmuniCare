@@ -1,6 +1,7 @@
 const Profile = require('../models/Profile');
 const User = require('../models/User');
 const VaccineRecord = require('../models/VaccineRecord');
+const PetEntry = require('../models/PetEntry');
 const { getVaccineStatus } = require('../utils/statusCalc');
 const { sendReminderEmail } = require('../config/mailer');
 
@@ -16,11 +17,23 @@ exports.sendNow = async (req, res) => {
     const records = await VaccineRecord.find({ profileId: profile._id });
     const status = getVaccineStatus(profile, records);
 
+    const petHistory =
+  profile.category === 'Pet'
+    ? await PetEntry.find({
+        profileId: profile._id,
+        userId: req.userId,
+      }).sort({ date: -1, createdAt: -1 })
+    : [];
     if (!status.overdue.length && !status.upcoming.length) {
       return res.json({ message: 'No overdue or upcoming vaccines — nothing to send' });
     }
 
-    const result = await sendReminderEmail(user.email, profile, status);
+    const result = await sendReminderEmail(
+  user.email,
+  profile,
+  status,
+  petHistory
+);
     if (!result.success) return res.status(502).json({ message: result.message || 'Email failed to send' });
 
     res.json({ message: `Reminder email sent to ${user.email}` });

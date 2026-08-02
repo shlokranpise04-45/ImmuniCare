@@ -26,12 +26,25 @@ exports.addRecord = async (req, res) => {
     if (!vaccineName || !dateTaken) {
       return res.status(400).json({ message: 'vaccineName and dateTaken are required' });
     }
+    const normalizedDoseNumber = Number(doseNumber ?? 1);
+    if (!Number.isInteger(normalizedDoseNumber) || normalizedDoseNumber < 1) {
+      return res.status(400).json({ message: 'doseNumber must be a positive whole number' });
+    }
+
+    const duplicate = await VaccineRecord.exists({
+      profileId: profile._id,
+      vaccineName,
+      doseNumber: normalizedDoseNumber,
+    });
+    if (duplicate) {
+      return res.status(409).json({ message: `Dose ${normalizedDoseNumber} is already recorded for this profile` });
+    }
  
     const record = await VaccineRecord.create({
       profileId: profile._id,
       vaccineName,
       dateTaken,
-      doseNumber: doseNumber || 1, // defaults to dose 1 if the frontend doesn't send it yet
+      doseNumber: normalizedDoseNumber,
     });
     res.status(201).json(record);
   } catch (err) {

@@ -33,7 +33,7 @@ const formatMonths = (months) => {
   return `${years}y ${rem}m`;
 };
 
-const generateVaccinationPdf = (profile, status) => {
+const generateVaccinationPdf = (profile, status, petHistory = []) => {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const chunks = [];
   const pdf = new Promise((resolve, reject) => {
@@ -94,7 +94,29 @@ const generateVaccinationPdf = (profile, status) => {
     doc.text(`Status: due soon`, { indent: 36 });
   });
 
-  doc.addPage();
+  if (profile.category === 'Pet') {
+  renderList('Pet History', petHistory, (entry) => {
+    doc.fillColor('#0f172a').fontSize(11).text(entry.title, { indent: 20 });
+
+    doc.fillColor('#64748b').fontSize(10).text(
+      `${entry.type.charAt(0).toUpperCase() + entry.type.slice(1)} • ${formatDate(entry.date)}`,
+      { indent: 36 }
+    );
+
+    if (entry.weightKg !== undefined) {
+      doc.text(`Weight: ${entry.weightKg} kg`, { indent: 36 });
+    }
+
+    if (entry.details) {
+      doc.text(`Details: ${entry.details}`, { indent: 36 });
+    }
+
+    if (entry.documentUrl) {
+      doc.text(`Document: ${entry.documentUrl}`, { indent: 36 });
+    }
+  });
+}
+
   doc.fillColor('#0f172a').fontSize(14).text('Important Notes', { underline: true });
   doc.moveDown(0.2);
   doc.fillColor('#475569').fontSize(11).text('This report is a summary of recorded and pending vaccinations for the selected patient. Please review overdue items and schedule follow-up doses as recommended.');
@@ -102,7 +124,7 @@ const generateVaccinationPdf = (profile, status) => {
   return pdf;
 };
 
-const sendReminderEmail = async (toEmail, profile, status) => {
+const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
   const config = getBrevoConfig();
   if (config.error) {
     console.error('Email configuration error:', config.error);
@@ -113,7 +135,7 @@ const sendReminderEmail = async (toEmail, profile, status) => {
   }
 
   try {
-    const pdfBuffer = await generateVaccinationPdf(profile, status);
+    const pdfBuffer = await generateVaccinationPdf(profile, status, petHistory);
     const pdfBase64 = pdfBuffer.toString('base64');
     const overdueList = status.overdue.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
     const upcomingList = status.upcoming.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
