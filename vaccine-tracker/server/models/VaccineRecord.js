@@ -7,7 +7,6 @@ const vaccineRecordSchema = new mongoose.Schema({
   dateTaken: { type: Date, required: true },
 }, { timestamps: true });
  
-
 vaccineRecordSchema.index({ profileId: 1, vaccineName: 1, doseNumber: 1 }, { unique: true });
  
 module.exports = mongoose.model('VaccineRecord', vaccineRecordSchema);

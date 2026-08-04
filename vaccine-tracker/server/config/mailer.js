@@ -188,4 +188,50 @@ const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
   }
 };
 
-module.exports = { sendReminderEmail };
+const sendPasswordResetEmail = async (toEmail, resetUrl) => {
+  const config = getBrevoConfig();
+  if (config.error) {
+    console.error('Email configuration error:', config.error);
+    return { success: false, message: config.error };
+  }
+  if (!toEmail || !EMAIL_PATTERN.test(toEmail)) {
+    return { success: false, message: 'Recipient email is invalid.' };
+  }
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': config.apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { email: config.fromEmail, name: config.fromName },
+        to: [{ email: toEmail }],
+        subject: 'Reset your ImmuniCare password',
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; color: #102a43; line-height: 1.5;">
+            <h2 style="color: #0f766e;">Reset your password</h2>
+            <p>We received a request to reset your ImmuniCare password. Use the link below to continue.</p>
+            <p><a href="${resetUrl}" style="color: #0f766e;">Reset password</a></p>
+            <p>If you did not request this, you can safely ignore this email.</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Password reset email failed:', response.status, errText);
+      return { success: false, message: `Email service rejected the request (${response.status})` };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('Password reset email failed:', err);
+    return { success: false, message: `Email send failed: ${err.message}` };
+  }
+};
+
+module.exports = { sendReminderEmail, sendPasswordResetEmail };

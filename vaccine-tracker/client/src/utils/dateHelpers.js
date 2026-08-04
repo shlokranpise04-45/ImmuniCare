@@ -1,5 +1,4 @@
-// Shared date-math used by ProfileCard, VaccineRow, and the dashboard chart,
-// so age/date logic doesn't get reimplemented slightly differently everywhere.
+
 
 export function getAgeLabel(dob) {
   const now = new Date();

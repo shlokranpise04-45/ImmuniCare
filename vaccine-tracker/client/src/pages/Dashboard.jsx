@@ -19,7 +19,12 @@ export default function Dashboard() {
   const [breed, setBreed] = useState('');
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const { user, logout } = useAuth();
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [emailNotice, setEmailNotice] = useState('');
+  const { user, logout, updateEmail } = useAuth();
   const navigate = useNavigate();
 
   const resetForm = () => {
@@ -45,6 +50,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => { loadProfiles(category); }, [category]);
+  useEffect(() => { setEmailDraft(user?.email || ''); }, [user?.email]);
 
   const handleAddProfile = async (event) => {
     event.preventDefault();
@@ -75,6 +81,28 @@ export default function Dashboard() {
     loadProfiles();
   };
 
+  const handleUpdateEmail = async (event) => {
+    event.preventDefault();
+    const trimmedEmail = emailDraft.trim();
+    if (!trimmedEmail) {
+      setEmailError('Please enter an email address.');
+      return;
+    }
+
+    setIsUpdatingEmail(true);
+    setEmailError('');
+    setEmailNotice('');
+    try {
+      await updateEmail(trimmedEmail);
+      setEmailNotice('Email updated successfully.');
+      setShowEmailModal(false);
+    } catch (err) {
+      setEmailError(err.response?.data?.message || 'Could not update your email address.');
+    } finally {
+      setIsUpdatingEmail(false);
+    }
+  };
+
   const isPets = category === 'Pet';
   const groupLabel = isPets ? 'pets' : 'family';
 
@@ -87,6 +115,7 @@ export default function Dashboard() {
             <div><h3>ImmuniCare</h3><p>{user?.name}'s {groupLabel} records</p></div>
           </div>
           <div className="topbar-actions">
+            <button className="btn btn-ghost" onClick={() => { setEmailDraft(user?.email || ''); setEmailError(''); setShowEmailModal(true); }}>Update email</button>
             <button className="btn btn-primary" onClick={() => { resetForm(); setShowAdd(true); }}>+ Add {isPets ? 'pet' : 'profile'}</button>
             <button className="btn btn-ghost" onClick={logout}>Logout</button>
           </div>
@@ -103,6 +132,8 @@ export default function Dashboard() {
           <button className={category === 'Pet' ? 'profile-switch__option active' : 'profile-switch__option'} onClick={() => setCategory('Pet')} role="tab" aria-selected={category === 'Pet'}>Pets</button>
         </div>
 
+        {emailNotice && <div className="card" style={{ marginBottom: 16 }}><p className="empty-state">{emailNotice}</p></div>}
+
         <div className="dashboard-section-head">
           <h3>Your {groupLabel}</h3>
           <span className="dashboard-count">{profiles.length} {profiles.length === 1 ? (isPets ? 'pet' : 'profile') : (isPets ? 'pets' : 'profiles')}</span>
@@ -113,6 +144,22 @@ export default function Dashboard() {
           {profiles.map(profile => <ProfileCard key={profile._id} profile={profile} stats={profileStats[profile._id]} onOpen={() => navigate(`/profile/${profile._id}`)} onDelete={handleDelete} />)}
         </div>
       </div>
+
+      {showEmailModal && (
+        <div className="modal-overlay">
+          <form className="modal-box" onSubmit={handleUpdateEmail}>
+            <h3 style={{ marginBottom: 16 }}>Update email address</h3>
+            <p className="empty-state" style={{ marginBottom: 12 }}>Use this if you signed up with the wrong address or want to change it later.</p>
+            <label className="field-label">Email</label>
+            <input type="email" value={emailDraft} onChange={(e) => setEmailDraft(e.target.value)} placeholder="name@example.com" />
+            <div className="topbar-actions" style={{ marginTop: 16 }}>
+              <button className="btn btn-primary" type="submit" disabled={isUpdatingEmail}>{isUpdatingEmail ? 'Saving…' : 'Save email'}</button>
+              <button className="btn btn-ghost" type="button" onClick={() => { setShowEmailModal(false); setEmailError(''); }}>Cancel</button>
+            </div>
+            {emailError && <p className="form-error" role="alert">{emailError}</p>}
+          </form>
+        </div>
+      )}
 
       {showAdd && (
         <div className="modal-overlay">

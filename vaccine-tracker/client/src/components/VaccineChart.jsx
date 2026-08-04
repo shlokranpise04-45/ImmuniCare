@@ -3,9 +3,9 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
  
 const COLORS = {
-  Completed: '#2F6F5E', // --stamp-teal
-  Upcoming: '#B5822E',  // --stamp-gold
-  Overdue: '#B23A2E',   // --stamp-red
+  Completed: '#2F6F5E', 
+  Upcoming: '#B5822E',  
+  Overdue: '#B23A2E',   
 };
  
 export default function VaccineChart({ status }) {
