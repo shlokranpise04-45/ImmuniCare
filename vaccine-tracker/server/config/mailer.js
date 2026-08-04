@@ -33,6 +33,12 @@ const formatMonths = (months) => {
   return `${years}y ${rem}m`;
 };
 
+const escapeHtml = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;');
+
 const generateVaccinationPdf = (profile, status, petHistory = []) => {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const chunks = [];
@@ -42,84 +48,114 @@ const generateVaccinationPdf = (profile, status, petHistory = []) => {
     doc.on('error', reject);
   });
 
-  doc.fontSize(20).fillColor('#0f172a').text('Vaccination Report', { align: 'center' });
-  doc.moveDown(0.5);
-  doc.fontSize(12).fillColor('#475569');
-  doc.text(`Patient: ${profile.name}`);
-  doc.text(`Date of birth: ${formatDate(profile.dob)}`);
-  doc.text(`Gender: ${profile.gender || 'N/A'}`);
-  doc.text(`Report date: ${formatDate(new Date())}`);
-  doc.moveDown();
+  const brandBlue = '#2563eb';
+  const brandTeal = '#0f766e';
+  const headingColor = '#0f172a';
+  const bodyColor = '#475569';
 
-  doc.fillColor('#0f766e').fontSize(14).text('Summary', { underline: true });
-  doc.moveDown(0.25);
-  doc.fillColor('#0f172a').fontSize(11);
-  doc.text(`Completed vaccines: ${status.completed.length}`);
-  doc.text(`Overdue vaccines: ${status.overdue.length}`);
-  doc.text(`Upcoming vaccines: ${status.upcoming.length}`);
-  doc.moveDown();
+  doc.fillColor(brandTeal).font('Helvetica-Bold').fontSize(24).text('ImmuniCare', { align: 'center' });
+  doc.moveDown(0.2);
+  doc.fillColor(bodyColor).font('Helvetica').fontSize(10).text('Preventive care insights and vaccination follow-up', { align: 'center' });
+  doc.moveDown(0.6);
 
-  const renderList = (title, items, renderRow) => {
-    doc.fillColor('#0f172a').fontSize(13).text(title);
-    doc.moveDown(0.2);
+  doc.fillColor('#f8fafc').rect(40, 95, 515, 95).fill();
+  doc.strokeColor('#dbeafe').lineWidth(1).rect(40, 95, 515, 95).stroke();
+
+  doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(12).text('Patient Overview', 60, 110);
+  doc.font('Helvetica').fontSize(11).fillColor(bodyColor);
+  doc.text(`Patient name: ${profile.name}`, 60, 130);
+  doc.text(`Date of birth: ${formatDate(profile.dob)}`, 60, 148);
+  doc.text(`Gender: ${profile.gender || 'N/A'}`, 60, 166);
+  doc.text(`Report generated: ${formatDate(new Date())}`, 340, 130);
+  doc.text(`Care category: ${profile.category || 'General'}`, 340, 148);
+  doc.moveDown(2.2);
+
+  doc.moveDown(0.9);
+  doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(14).text('At-a-glance Summary', 45, doc.y, { underline: false });
+  doc.moveDown(0.7);
+
+  const renderSummaryCard = (x, y, label, value, accentColor) => {
+    doc.fillColor('#ffffff').rect(x, y, 140, 58).fill();
+    doc.strokeColor('#e2e8f0').lineWidth(1).rect(x, y, 140, 58).stroke();
+    doc.fillColor(accentColor).font('Helvetica-Bold').fontSize(9).text(label.toUpperCase(), x + 12, y + 10);
+    doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(20).text(String(value), x + 12, y + 24);
+  };
+
+  renderSummaryCard(45, 240, 'Completed', status.completed.length, brandTeal);
+  renderSummaryCard(205, 240, 'Overdue', status.overdue.length, '#dc2626');
+  renderSummaryCard(365, 240, 'Upcoming', status.upcoming.length, '#d97706');
+  doc.moveDown(3.6);
+
+  const renderTable = (title, items, type) => {
+    if (doc.y > 670) {
+      doc.addPage();
+    }
+    doc.moveDown(0.7);
+    doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(12).text(title, 45, doc.y);
+    doc.moveDown(0.45);
+
     if (!items.length) {
-      doc.fillColor('#64748b').fontSize(11).text('None recorded.', { indent: 20 });
+      doc.fillColor(bodyColor).font('Helvetica').fontSize(10).text('No entries recorded at this time.', { indent: 14 });
       doc.moveDown();
       return;
     }
-    items.forEach(item => {
-      renderRow(item);
-      doc.moveDown(0.4);
-      if (doc.y > 720) {
+
+    const startX = 45;
+    const rowHeight = 18;
+    const col1Width = 220;
+    const col2Width = 120;
+    const col3Width = 120;
+    const tableWidth = col1Width + col2Width + col3Width;
+
+    doc.fillColor('#f8fafc').rect(startX, doc.y, tableWidth, 20).fill();
+    doc.strokeColor('#dbeafe').lineWidth(0.7).rect(startX, doc.y, tableWidth, 20).stroke();
+    doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(9).text('Vaccine / Item', startX + 8, doc.y + 5);
+    doc.text('Status', startX + col1Width + 8, doc.y + 5);
+    doc.text('Timing', startX + col1Width + col2Width + 8, doc.y + 5);
+    doc.moveDown(0.9);
+
+    items.forEach((item, index) => {
+      const y = doc.y;
+      const rowY = y;
+      doc.strokeColor('#e2e8f0').lineWidth(0.5).rect(startX, rowY, tableWidth, rowHeight).stroke();
+      const fillColor = type === 'overdue' ? '#fef2f2' : type === 'upcoming' ? '#fffbeb' : '#f0fdf4';
+      doc.fillColor(fillColor).rect(startX, rowY, tableWidth, rowHeight).fill();
+
+      const label = item.name || item.title || 'Untitled item';
+      const statusText = type === 'completed' ? `${item.dosesTaken}/${item.totalDoses} doses` : type === 'overdue' ? 'Needs attention' : 'Scheduled';
+      const timingText = type === 'completed' ? formatDate(item.dateTaken) : type === 'overdue' ? `Age ${formatMonths(item.nextDose?.ageMonths)}` : `Age ${formatMonths(item.nextDose?.ageMonths)}`;
+
+      doc.fillColor(headingColor).font('Helvetica').fontSize(8).text(label, startX + 6, rowY + 4, { width: col1Width - 8 });
+      doc.fillColor(bodyColor).font('Helvetica').fontSize(8).text(statusText, startX + col1Width + 6, rowY + 4, { width: col2Width - 8 });
+      doc.fillColor(bodyColor).font('Helvetica').fontSize(8).text(timingText, startX + col1Width + col2Width + 6, rowY + 4, { width: col3Width - 8 });
+
+      doc.moveDown(0.8);
+      if (doc.y > 700) {
         doc.addPage();
       }
     });
-    doc.moveDown();
+
+    doc.moveDown(0.4);
   };
 
-  renderList('Completed Vaccinations', status.completed, (item) => {
-    doc.fillColor('#0f172a').fontSize(11).text(`${item.name} — ${item.dosesTaken}/${item.totalDoses} doses`, { indent: 20 });
-    doc.fillColor('#64748b').fontSize(10).text(`Last dose taken: ${formatDate(item.dateTaken)}`, { indent: 36 });
-  });
-
-  renderList('Overdue Vaccines', status.overdue, (item) => {
-    doc.fillColor('#991b1b').fontSize(11).text(`${item.name} — ${item.nextDoseLabel}`, { indent: 20 });
-    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${formatMonths(item.nextDose.ageMonths)}`, { indent: 36 });
-    doc.text(`Reason: overdue now`, { indent: 36 });
-  });
-
-  renderList('Upcoming Vaccines', status.upcoming, (item) => {
-    doc.fillColor('#ca8a04').fontSize(11).text(`${item.name} — ${item.nextDoseLabel}`, { indent: 20 });
-    doc.fillColor('#64748b').fontSize(10).text(`Recommended age: ${formatMonths(item.nextDose.ageMonths)}`, { indent: 36 });
-    doc.text(`Status: due soon`, { indent: 36 });
-  });
+  renderTable('Completed Vaccinations', status.completed, 'completed');
+  renderTable('Overdue Vaccines', status.overdue, 'overdue');
+  renderTable('Upcoming Vaccines', status.upcoming, 'upcoming');
 
   if (profile.category === 'Pet') {
-  renderList('Pet History', petHistory, (entry) => {
-    doc.fillColor('#0f172a').fontSize(11).text(entry.title, { indent: 20 });
+    renderTable('Pet History', petHistory, 'history');
+  }
 
-    doc.fillColor('#64748b').fontSize(10).text(
-      `${entry.type.charAt(0).toUpperCase() + entry.type.slice(1)} • ${formatDate(entry.date)}`,
-      { indent: 36 }
-    );
+  if (doc.y > 680) {
+    doc.addPage();
+  }
 
-    if (entry.weightKg !== undefined) {
-      doc.text(`Weight: ${entry.weightKg} kg`, { indent: 36 });
-    }
-
-    if (entry.details) {
-      doc.text(`Details: ${entry.details}`, { indent: 36 });
-    }
-
-    if (entry.documentUrl) {
-      doc.text(`Document: ${entry.documentUrl}`, { indent: 36 });
-    }
-  });
-}
-
-  doc.fillColor('#0f172a').fontSize(14).text('Important Notes', { underline: true });
-  doc.moveDown(0.2);
-  doc.fillColor('#475569').fontSize(11).text('This report is a summary of recorded and pending vaccinations for the selected patient. Please review overdue items and schedule follow-up doses as recommended.');
+  doc.moveDown(0.8);
+  doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(12).text('Care Notes', 45, doc.y, { underline: false });
+  doc.moveDown(0.35);
+  doc.fillColor(bodyColor).font('Helvetica').fontSize(10).text('This report is a concise summary of recorded and pending preventive care actions for the selected patient. Please review overdue items and plan follow-up doses as recommended.');
+  doc.moveDown(1.2);
+  doc.fillColor(brandBlue).font('Helvetica-Bold').fontSize(10).text('Prepared by ImmuniCare');
   doc.end();
   return pdf;
 };
@@ -137,16 +173,37 @@ const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
   try {
     const pdfBuffer = await generateVaccinationPdf(profile, status, petHistory);
     const pdfBase64 = pdfBuffer.toString('base64');
-    const overdueList = status.overdue.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
-    const upcomingList = status.upcoming.map(v => `<li>${v.name} — ${v.nextDoseLabel} (recommended at ${formatMonths(v.nextDose?.ageMonths)})</li>`).join('');
+    const safeName = escapeHtml(profile.name || 'your patient');
+    const overdueList = status.overdue.map(v => `<li style="margin-bottom:8px;">${escapeHtml(v.name)} — ${escapeHtml(v.nextDoseLabel)} <span style="color:#64748b;">(recommended at ${escapeHtml(formatMonths(v.nextDose?.ageMonths))})</span></li>`).join('');
+    const upcomingList = status.upcoming.map(v => `<li style="margin-bottom:8px;">${escapeHtml(v.name)} — ${escapeHtml(v.nextDoseLabel)} <span style="color:#64748b;">(recommended at ${escapeHtml(formatMonths(v.nextDose?.ageMonths))})</span></li>`).join('');
 
     const html = `
-    <div style="font-family: Arial, sans-serif; color: #102a43; line-height: 1.5;">
-      <h2 style="color: #0f766e;">Vaccination report for ${profile.name}</h2>
-      <p>This email includes a full PDF report attachment with the patient’s vaccination status, completed doses, overdue doses, and upcoming recommendations.</p>
-      ${status.overdue.length ? `<h3 style="color: #991b1b;">Overdue vaccines</h3><ul>${overdueList}</ul>` : ''}
-      ${status.upcoming.length ? `<h3 style="color: #ca8a04;">Upcoming vaccines</h3><ul>${upcomingList}</ul>` : ''}
-      <p style="margin-top: 16px; color: #475569;">Open the attached PDF to review the complete vaccination summary and next steps.</p>
+    <div style="background:#f8fafc;padding:32px;font-family:Segoe UI, Arial, sans-serif;color:#0f172a;">
+      <div style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 16px 40px rgba(15,23,42,0.08);">
+        <div style="background:linear-gradient(135deg,#0f766e 0%,#2563eb 100%);padding:28px 32px;color:#ffffff;">
+          <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">ImmuniCare</div>
+          <h1 style="margin:8px 0 8px;font-size:26px;line-height:1.2;">Vaccination report attached</h1>
+          <p style="margin:0;font-size:15px;line-height:1.6;opacity:0.95;">This report contains the latest vaccination summary for ${safeName}, including completed doses, overdue items, and upcoming care recommendations.</p>
+        </div>
+        <div style="padding:32px;">
+          <p style="margin:0 0 12px;font-size:15px;">Hello,</p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#334155;">We’ve prepared a clear and professional summary for ${safeName}. The attached report outlines the current vaccination status and highlights the next steps that may need attention.</p>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#334155;">At ImmuniCare, we help families stay on top of preventive care with simple, reliable updates and clear follow-up guidance.</p>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin:10px 0 20px;color:#334155;">
+            <strong style="color:#0f172a;">What’s included in the report:</strong>
+            <ul style="margin:8px 0 0 18px;padding:0;line-height:1.7;">
+              <li>Completed vaccination records</li>
+              <li>Overdue items requiring attention</li>
+              <li>Upcoming recommendations for future care</li>
+            </ul>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:1.7;color:#64748b;">Please review the attached PDF at your convenience and contact your care provider if you would like help planning the next steps.</p>
+        </div>
+        <div style="padding:0 32px 28px;color:#64748b;font-size:13px;line-height:1.6;">
+          Kind regards,<br/>
+          <strong>The ImmuniCare team</strong>
+        </div>
+      </div>
     </div>
     `;
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -159,7 +216,7 @@ const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
       body: JSON.stringify({
         sender: { email: config.fromEmail, name: config.fromName },
         to: [{ email: toEmail }],
-        subject: `Vaccination report — ${profile.name}`,
+        subject: `ImmuniCare vaccination report — ${profile.name}`,
         htmlContent: html,
         attachment: [
           {
@@ -211,11 +268,18 @@ const sendPasswordResetEmail = async (toEmail, resetUrl) => {
         to: [{ email: toEmail }],
         subject: 'Reset your ImmuniCare password',
         htmlContent: `
-          <div style="font-family: Arial, sans-serif; color: #102a43; line-height: 1.5;">
-            <h2 style="color: #0f766e;">Reset your password</h2>
-            <p>We received a request to reset your ImmuniCare password. Use the link below to continue.</p>
-            <p><a href="${resetUrl}" style="color: #0f766e;">Reset password</a></p>
-            <p>If you did not request this, you can safely ignore this email.</p>
+          <div style="background:#f8fafc;padding:32px;font-family:Segoe UI, Arial, sans-serif;color:#0f172a;">
+            <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,0.08);">
+              <div style="background:linear-gradient(135deg,#0f766e 0%,#2563eb 100%);padding:24px 28px;color:#ffffff;">
+                <h2 style="margin:0;font-size:24px;">Reset your password</h2>
+                <p style="margin:8px 0 0;opacity:0.95;">We received a request to reset your ImmuniCare account password.</p>
+              </div>
+              <div style="padding:28px;line-height:1.7;color:#334155;">
+                <p style="margin:0 0 12px;">Use the secure link below to continue and create a new password.</p>
+                <p style="margin:0 0 16px;"><a href="${resetUrl}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;">Reset password</a></p>
+                <p style="margin:0;color:#64748b;">If you did not request this, you can safely ignore this message.</p>
+              </div>
+            </div>
           </div>
         `,
       }),
