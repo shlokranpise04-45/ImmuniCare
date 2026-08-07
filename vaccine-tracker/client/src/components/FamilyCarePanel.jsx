@@ -92,7 +92,7 @@ export default function FamilyCarePanel({ profile, onUpdated }) {
   return (
     <>
       <div className="card">
-        <div className="section-actions"><h3>Family Profile</h3><button className="btn btn-ghost" type="button" onClick={() => setEditingProfile(!editingProfile)}>{editingProfile ? 'Cancel' : 'Edit profile'}</button></div>
+        <div className="section-actions"><h3>Your Profile</h3><button className="btn btn-ghost" type="button" onClick={() => setEditingProfile(!editingProfile)}>{editingProfile ? 'Cancel' : 'Edit profile'}</button></div>
         {editingProfile ? <form onSubmit={saveProfile} className="pet-form-grid">
           <input aria-label="Family member name" value={profileValues.name} onChange={(e) => setProfileValues({ ...profileValues, name: e.target.value })} required />
           <input aria-label="Date of birth" type="date" value={profileValues.dob || ''} onChange={(e) => setProfileValues({ ...profileValues, dob: e.target.value })} required />
@@ -114,7 +114,7 @@ export default function FamilyCarePanel({ profile, onUpdated }) {
       </div>
 
       <div className="card">
-        <h3>Family Record</h3>
+        <h3>Profile Record</h3>
         <form onSubmit={saveRecord} className="pet-form-grid">
           <select value={record.type} onChange={(e) => setRecord({ ...record, type: e.target.value })}>{RECORD_TYPES.filter(([value]) => value !== 'pregnancy' || profile.gender === 'Female').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
           <input placeholder="Record title" value={record.title} onChange={(e) => setRecord({ ...record, title: e.target.value })} required />
@@ -126,7 +126,7 @@ export default function FamilyCarePanel({ profile, onUpdated }) {
       </div>
 
       <div className="card">
-        <h3>Family History</h3>
+        <h3>Profile History</h3>
         {entries.length === 0 ? <p className="empty-state">No family records yet.</p> : <div className="record-list">
           {entries.map(entry => <div className="record-item" key={entry._id}>
             <div><strong>{entry.title}</strong><div className="record-meta">{RECORD_TYPES.find(([value]) => value === entry.type)?.[1]} · {new Date(entry.date).toLocaleDateString()}</div>{entry.details && <div className="record-meta">{entry.details}</div>}</div>

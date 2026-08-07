@@ -10,7 +10,7 @@ export default function VaccineRow({ vaccine, type }) {
     <div className="record-item">
       <div className="record-item__left">
         <strong>{vaccine.name}</strong>
-        {doseLabel && <span className="record-dose">{doseLabel}</span>}
+        {doseLabel && <span className="record-dose"> {doseLabel}</span>}
         <div className="record-meta">
           {type === 'completed' && vaccine.dateTaken && (
             <span>taken {formatDate(vaccine.dateTaken)}</span>

@@ -39,6 +39,13 @@ const escapeHtml = (value = '') => String(value)
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
 
+const shouldForcePageBreak = (currentY, itemHeight, pageBottom, buffer = 16) => {
+  if (typeof currentY !== 'number' || typeof itemHeight !== 'number' || typeof pageBottom !== 'number') {
+    return false;
+  }
+  return currentY + itemHeight + buffer > pageBottom;
+};
+
 const generateVaccinationPdf = (profile, status, petHistory = []) => {
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const chunks = [];
@@ -72,6 +79,7 @@ const generateVaccinationPdf = (profile, status, petHistory = []) => {
 
   doc.moveDown(0.9);
   doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(14).text('At-a-glance Summary', 45, doc.y, { underline: false });
+  doc.strokeColor('#e2e8f0').lineWidth(0.7).moveTo(45, doc.y + 8).lineTo(220, doc.y + 8).stroke();
   doc.moveDown(0.7);
 
   const renderSummaryCard = (x, y, label, value, accentColor) => {
@@ -101,38 +109,61 @@ const generateVaccinationPdf = (profile, status, petHistory = []) => {
     }
 
     const startX = 45;
-    const rowHeight = 18;
     const col1Width = 220;
     const col2Width = 120;
     const col3Width = 120;
     const tableWidth = col1Width + col2Width + col3Width;
+    const headerHeight = 20;
+    const cellPadding = 6; // left+right/top spacing
+    const minRowHeight = 18;
+    const pageBottom = 740;
 
-    doc.fillColor('#f8fafc').rect(startX, doc.y, tableWidth, 20).fill();
-    doc.strokeColor('#dbeafe').lineWidth(0.7).rect(startX, doc.y, tableWidth, 20).stroke();
-    doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(9).text('Vaccine / Item', startX + 8, doc.y + 5);
-    doc.text('Status', startX + col1Width + 8, doc.y + 5);
-    doc.text('Timing', startX + col1Width + col2Width + 8, doc.y + 5);
-    doc.moveDown(0.9);
+    const drawHeader = () => {
+      if (shouldForcePageBreak(doc.y, headerHeight, pageBottom, 12)) {
+        doc.addPage();
+      }
+      const headerTop = doc.y;
+      doc.fillColor('#f8fafc').rect(startX, headerTop, tableWidth, headerHeight).fill();
+      doc.strokeColor('#dbeafe').lineWidth(0.7).rect(startX, headerTop, tableWidth, headerHeight).stroke();
+      doc.fillColor(headingColor).font('Helvetica-Bold').fontSize(9).text('Vaccine / Item', startX + 8, headerTop + 5);
+      doc.text('Status', startX + col1Width + 8, headerTop + 5);
+      doc.text('Timing', startX + col1Width + col2Width + 8, headerTop + 5);
+      doc.moveDown(0.9);
+    };
+
+    drawHeader();
 
     items.forEach((item, index) => {
-      const y = doc.y;
-      const rowY = y;
+      const label = item.name || item.title || 'Untitled item';
+      const statusText = type === 'completed' ? `${item.dosesTaken}/${item.totalDoses} doses` : type === 'overdue' ? 'Needs attention' : 'Scheduled';
+      const timingText = type === 'completed' ? formatDate(item.dateTaken) : `Age ${formatMonths(item.nextDose?.ageMonths)}`;
+
+      // measure heights to compute a row height that fits wrapped text
+      const labelHeight = doc.heightOfString(label, { width: col1Width - (cellPadding + 2), align: 'left' });
+      const statusHeight = doc.heightOfString(statusText, { width: col2Width - (cellPadding + 2), align: 'left' });
+      const timingHeight = doc.heightOfString(timingText, { width: col3Width - (cellPadding + 2), align: 'left' });
+
+      const contentMaxHeight = Math.max(labelHeight, statusHeight, timingHeight);
+      const rowHeight = Math.max(minRowHeight, Math.ceil(contentMaxHeight) + cellPadding * 2);
+
+      // add new page if row would overflow, leaving a small buffer so the header
+      // always starts cleanly on the following page without text running together
+      if (shouldForcePageBreak(doc.y, rowHeight, pageBottom, 18)) {
+        doc.addPage();
+        drawHeader();
+      }
+
+      const rowY = doc.y;
       doc.strokeColor('#e2e8f0').lineWidth(0.5).rect(startX, rowY, tableWidth, rowHeight).stroke();
       const fillColor = type === 'overdue' ? '#fef2f2' : type === 'upcoming' ? '#fffbeb' : '#f0fdf4';
       doc.fillColor(fillColor).rect(startX, rowY, tableWidth, rowHeight).fill();
 
-      const label = item.name || item.title || 'Untitled item';
-      const statusText = type === 'completed' ? `${item.dosesTaken}/${item.totalDoses} doses` : type === 'overdue' ? 'Needs attention' : 'Scheduled';
-      const timingText = type === 'completed' ? formatDate(item.dateTaken) : type === 'overdue' ? `Age ${formatMonths(item.nextDose?.ageMonths)}` : `Age ${formatMonths(item.nextDose?.ageMonths)}`;
+      doc.fillColor(headingColor).font('Helvetica').fontSize(8).text(label, startX + cellPadding, rowY + cellPadding, { width: col1Width - (cellPadding * 2), height: rowHeight - (cellPadding * 2) });
+      doc.fillColor(bodyColor).font('Helvetica').fontSize(8).text(statusText, startX + col1Width + cellPadding, rowY + cellPadding, { width: col2Width - (cellPadding * 2), height: rowHeight - (cellPadding * 2) });
+      doc.fillColor(bodyColor).font('Helvetica').fontSize(8).text(timingText, startX + col1Width + col2Width + cellPadding, rowY + cellPadding, { width: col3Width - (cellPadding * 2), height: rowHeight - (cellPadding * 2) });
 
-      doc.fillColor(headingColor).font('Helvetica').fontSize(8).text(label, startX + 6, rowY + 4, { width: col1Width - 8 });
-      doc.fillColor(bodyColor).font('Helvetica').fontSize(8).text(statusText, startX + col1Width + 6, rowY + 4, { width: col2Width - 8 });
-      doc.fillColor(bodyColor).font('Helvetica').fontSize(8).text(timingText, startX + col1Width + col2Width + 6, rowY + 4, { width: col3Width - 8 });
-
-      doc.moveDown(0.8);
-      if (doc.y > 700) {
-        doc.addPage();
-      }
+      // advance y by the full row height
+      doc.y = rowY + rowHeight + 4;
     });
 
     doc.moveDown(0.4);
@@ -298,4 +329,4 @@ const sendPasswordResetEmail = async (toEmail, resetUrl) => {
   }
 };
 
-module.exports = { sendReminderEmail, sendPasswordResetEmail };
+module.exports = { sendReminderEmail, sendPasswordResetEmail, generateVaccinationPdf, shouldForcePageBreak };

@@ -106,6 +106,15 @@ export function getEligibleVaccines(profile, vaccineList) {
   return vaccineList.filter((vaccine) => isRecommendedNow(vaccine, profile));
 }
 
+export function getSelectedVaccine(profile, vaccineList, selectedName, searchQuery = '') {
+  const eligibleVaccines = getEligibleVaccines(profile, vaccineList);
+  const normalizedSelection = (selectedName || searchQuery || '').trim().toLowerCase();
+
+  if (!normalizedSelection) return null;
+
+  return eligibleVaccines.find((vaccine) => vaccine.name?.toLowerCase() === normalizedSelection) || null;
+}
+
 export function getLoggableVaccines(profile, vaccineList) {
   if (!profile || !Array.isArray(vaccineList)) return [];
   return vaccineList.filter((vaccine) => isLoggableAsPastRecord(vaccine, profile));
