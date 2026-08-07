@@ -1,7 +1,7 @@
 const Profile = require('../models/Profile');
 const FamilyEntry = require('../models/FamilyEntry');
 
-const RECORD_TYPES = ['medical_history', 'vaccination', 'prescription', 'allergy', 'lab_report', 'surgery', 'hospital_visit', 'insurance', 'note', 'other'];
+const RECORD_TYPES = ['medical_history', 'pregnancy', 'prescription', 'allergy', 'lab_report', 'surgery', 'hospital_visit', 'insurance', 'note', 'other'];
 
 async function ownedFamilyProfile(profileId, userId) {
   return Profile.findOne({ _id: profileId, userId, category: { $ne: 'Pet' } });

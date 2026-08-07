@@ -17,7 +17,7 @@ exports.getProfiles = async (req, res) => {
  
 async function createProfile(req, res, forcedCategory) {
   try {
-    const { name, dob, gender, relationship, petType, breed } = req.body;
+    const { name, dob, gender, relationship, petType, breed, isPregnant, pregnancyStatus, pregnancyDueDate } = req.body;
     const category = forcedCategory || (req.body.category === 'Pet' ? 'Pet' : 'Family');
     const cleanName = typeof name === 'string' ? name.trim() : '';
     const cleanBreed = typeof breed === 'string' ? breed.trim() : '';
@@ -30,9 +30,23 @@ async function createProfile(req, res, forcedCategory) {
     }
 
     // Do not pass fields from the other category. Empty strings trigger Mongoose enum validation.
+    const normalizedPregnancyStatus = typeof pregnancyStatus === 'string' && ['not_pregnant', 'pregnant', 'postpartum', 'unknown'].includes(pregnancyStatus)
+      ? pregnancyStatus
+      : (typeof isPregnant === 'boolean' ? (isPregnant ? 'pregnant' : 'not_pregnant') : 'not_pregnant');
+
     const profileData = category === 'Pet'
       ? { userId: req.userId, name: cleanName, dob, gender, category, petType, ...(cleanBreed ? { breed: cleanBreed } : {}) }
-      : { userId: req.userId, name: cleanName, dob, gender, category, relationship };
+      : {
+          userId: req.userId,
+          name: cleanName,
+          dob,
+          gender,
+          category,
+          relationship,
+          ...(typeof isPregnant === 'boolean' ? { isPregnant } : {}),
+          pregnancyStatus: normalizedPregnancyStatus,
+          ...(pregnancyDueDate ? { pregnancyDueDate } : {}),
+        };
     const profile = await Profile.create(profileData);
     res.status(201).json(profile);
   } catch (err) {
@@ -65,7 +79,7 @@ exports.updateProfile = async (req, res) => {
 
     const fields = profile.category === 'Pet'
       ? ['name', 'dob', 'gender', 'petType', 'breed']
-      : ['name', 'dob', 'gender', 'relationship'];
+      : ['name', 'dob', 'gender', 'relationship', 'isPregnant', 'pregnancyStatus', 'pregnancyDueDate'];
     fields.forEach((field) => {
       if (req.body[field] !== undefined) profile[field] = req.body[field];
     });

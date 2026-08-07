@@ -1,5 +1,6 @@
 const vaccineReference = require('../data/vaccineReference');
 const petVaccineReference = require('../data/petVaccineReference');
+const { isRecommendedNow } = require('./vaccineEligibility');
  
 
 const SITUATIONAL_VACCINE_IDS = new Set(['rabies_pep', 'tt_pregnancy']);
@@ -42,7 +43,6 @@ function getVaccineStatus(profile, records) {
     const dosesTaken = recordsForVaccine.length;
     const totalDoses = vaccine.totalDoses || 1;
  
-    
     if (dosesTaken >= totalDoses) {
       completed.push({
         ...vaccine,
@@ -56,6 +56,7 @@ function getVaccineStatus(profile, records) {
  
    
     if (SITUATIONAL_VACCINE_IDS.has(vaccine.id) && dosesTaken === 0) continue;
+    if (!isRecommendedNow(vaccine, profile, today)) continue;
  
     const nextDose = vaccine.doseSchedule[dosesTaken];
     if (!nextDose) continue;

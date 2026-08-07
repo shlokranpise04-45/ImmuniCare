@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import api from '../services/api';
 import { VACCINE_REFERENCE } from '../data/vaccineReference';
+import { getEligibleVaccines } from '../utils/vaccineEligibility';
 
 const IMPORTANCE_STAMP = {
   Critical: 'overdue',
@@ -8,11 +10,29 @@ const IMPORTANCE_STAMP = {
 };
 
 export default function VaccineInfoModal({ onClose, profile }) {
-  const vaccines = profile?.category === 'Pet'
-    ? VACCINE_REFERENCE.filter(v => v.petType === profile.petType)
-    : VACCINE_REFERENCE.filter(v => !v.petType && (v.gender === 'All' || v.gender === profile.gender));
+  const [familyEntries, setFamilyEntries] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!profile?._id || profile.category === 'Pet' || profile.gender !== 'Female') {
+      setFamilyEntries([]);
+      return () => { active = false; };
+    }
+
+    api.get(`/profiles/${profile._id}/entries`)
+      .then(({ data }) => {
+        if (active) setFamilyEntries(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (active) setFamilyEntries([]);
+      });
+
+    return () => { active = false; };
+  }, [profile?._id, profile?.category, profile?.gender]);
+
+  const vaccines = getEligibleVaccines(profile, VACCINE_REFERENCE);
   const [selected, setSelected] = useState(vaccines[0] || {});
-  const [searchQuery, setSearchQuery] = useState(vaccines[0]?.name || '');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
   const filteredVaccines = vaccines.filter(v => {

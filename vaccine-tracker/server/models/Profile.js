@@ -13,6 +13,13 @@ const profileSchema = new mongoose.Schema({
     enum: ['Male', 'Female', 'Other'],
     required: true,
   },
+  isPregnant: { type: Boolean, default: false },
+  pregnancyStatus: {
+    type: String,
+    enum: ['not_pregnant', 'pregnant', 'postpartum', 'unknown'],
+    default: 'not_pregnant',
+  },
+  pregnancyDueDate: { type: Date },
   relationship: {
     type: String,
     enum: ['Self', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other'],

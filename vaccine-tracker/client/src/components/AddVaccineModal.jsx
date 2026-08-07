@@ -1,25 +1,58 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { VACCINE_REFERENCE } from '../data/vaccineReference';
+import { getLoggableVaccines, getAgeWindowWarning } from '../utils/vaccineEligibility';
  
 export default function AddVaccineModal({ profileId, profile, onClose, onAdded }) {
-  const availableVaccines = profile?.category === 'Pet'
-    ? VACCINE_REFERENCE.filter(v => v.petType === profile?.petType)
-    : VACCINE_REFERENCE.filter(v => !v.petType && (v.gender === 'All' || v.gender === profile?.gender));
-  const [vaccineName, setVaccineName] = useState(availableVaccines[0]?.name || '');
-  const [searchQuery, setSearchQuery] = useState(availableVaccines[0]?.name || '');
+  const [familyEntries, setFamilyEntries] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!profile?._id || profile.category === 'Pet' || profile.gender !== 'Female') {
+      setFamilyEntries([]);
+      return () => { active = false; };
+    }
+
+    api.get(`/profiles/${profile._id}/entries`)
+      .then(({ data }) => {
+        if (active) setFamilyEntries(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (active) setFamilyEntries([]);
+      });
+
+    return () => { active = false; };
+  }, [profile?._id, profile?.category, profile?.gender]);
+
+  const availableVaccines = getLoggableVaccines(profile, VACCINE_REFERENCE);
+  const [vaccineName, setVaccineName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [doseNumber, setDoseNumber] = useState(1);
   const [dateTaken, setDateTaken] = useState('');
   const [error, setError] = useState('');
- 
+
   const selectedVaccine = availableVaccines.find(v => v.name === vaccineName) || availableVaccines[0];
   const doseOptions = Array.from({ length: selectedVaccine?.totalDoses || 0 }, (_, i) => i + 1);
+  const isDateTakenValid = (value) => {
+    if (!value) return false;
+    const parsed = new Date(`${value}T00:00:00`);
+    return !Number.isNaN(parsed.getTime());
+  };
+  const warning = dateTaken && isDateTakenValid(dateTaken)
+    ? getAgeWindowWarning(selectedVaccine, profile, dateTaken)
+    : null;
   const filteredVaccines = availableVaccines.filter(v => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
-    const name = v.name.toLowerCase();
-    return name.startsWith(query) || name.includes(query);
+    const searchable = [
+      v.name,
+      v.diseasePrevented,
+      v.overview,
+      v.whatItProtectsAgainst,
+      ...(Array.isArray(v.keywords) ? v.keywords : []),
+    ].join(' ').toLowerCase();
+    return searchable.includes(query);
   });
  
   const handleVaccineChange = (name) => {
@@ -31,6 +64,8 @@ export default function AddVaccineModal({ profileId, profile, onClose, onAdded }
  
   const handleSubmit = async () => {
     if (!dateTaken) return setError('Please pick a date');
+    if (!isDateTakenValid(dateTaken)) return setError('Please pick a valid date');
+
     try {
       await api.post(`/records/${profileId}`, { vaccineName, doseNumber, dateTaken });
       onAdded();
@@ -84,7 +119,15 @@ export default function AddVaccineModal({ profileId, profile, onClose, onAdded }
         </select>
  
         <label className="field-label">Date taken</label>
-        <input type="date" value={dateTaken} onChange={(e) => setDateTaken(e.target.value)} />
+        <input
+          type="date"
+          value={dateTaken}
+          onChange={(e) => {
+            setDateTaken(e.target.value);
+            if (error) setError('');
+          }}
+        />
+        {warning && <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginTop: 4 }}>{warning}</p>}
  
         {error && <p style={{ color: 'var(--stamp-red)', fontSize: 13, marginTop: 4 }}>{error}</p>}
  
