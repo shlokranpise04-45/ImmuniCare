@@ -72,16 +72,9 @@ export default function ProfilePage() {
             {status.overdue.length === 0 && <p className="empty-state">None</p>}
           </div>
         </div>
-        <div className="status-col">
-          <h4 className="badge-completed">Completed</h4>
-          <div className="record-list">
-            {status.completed.map(v => <VaccineRow key={v.name} vaccine={v} type="completed" />)}
-            {status.completed.length === 0 && <p className="empty-state">None</p>}
-          </div>
-        </div>
       </div>
 
-      <div className="card">
+      <div className="card" style={{ marginTop: 14 }}>
         <div className="topbar-actions">
           <button className="btn btn-primary" onClick={() => setShowAddVaccine(true)}>+ Add Vaccination</button>
           <button className="btn btn-ghost" onClick={() => setShowInfo(true)}>Vaccine Info</button>

@@ -1,41 +1,11 @@
 import { useState } from 'react';
 import api from '../services/api';
-import { PET_VACCINES } from '../data/petVaccines';
- 
-
-const VACCINES = [
-  { name: 'BCG', totalDoses: 1, gender: 'All' },
-  { name: 'Hepatitis B', totalDoses: 3, gender: 'All' },
-  { name: 'Oral Polio Vaccine (OPV)', totalDoses: 5, gender: 'All' },
-  { name: 'Inactivated Polio Vaccine (IPV)', totalDoses: 2, gender: 'All' },
-  { name: 'DTP (Diphtheria, Tetanus, Pertussis)', totalDoses: 5, gender: 'All' },
-  { name: 'Hib (Haemophilus influenzae type b)', totalDoses: 4, gender: 'All' },
-  { name: 'PCV (Pneumococcal Conjugate Vaccine)', totalDoses: 3, gender: 'All' },
-  { name: 'PPSV23 (Pneumococcal Polysaccharide)', totalDoses: 1, gender: 'All' },
-  { name: 'Rotavirus Vaccine', totalDoses: 3, gender: 'All' },
-  { name: 'MMR (Measles, Mumps, Rubella)', totalDoses: 2, gender: 'All' },
-  { name: 'Varicella (Chickenpox)', totalDoses: 2, gender: 'All' },
-  { name: 'Hepatitis A', totalDoses: 2, gender: 'All' },
-  { name: 'Typhoid Conjugate Vaccine', totalDoses: 1, gender: 'All' },
-  { name: 'Japanese Encephalitis (JE)', totalDoses: 2, gender: 'All' },
-  { name: 'Measles-Rubella (MR)', totalDoses: 2, gender: 'All' },
-  { name: 'Tdap Booster', totalDoses: 1, gender: 'All' },
-  { name: 'HPV (Human Papillomavirus)', totalDoses: 2, gender: 'All' },
-  { name: 'Meningococcal (MenACWY)', totalDoses: 2, gender: 'All' },
-  { name: 'Influenza (Flu)', totalDoses: 1, gender: 'All' },
-  { name: 'Rabies (Post-Exposure Prophylaxis)', totalDoses: 4, gender: 'All' },
-  { name: 'Yellow Fever', totalDoses: 1, gender: 'All' },
-  { name: 'Oral Cholera Vaccine', totalDoses: 2, gender: 'All' },
-  { name: 'Zoster (Shingles) Vaccine', totalDoses: 2, gender: 'All' },
-  { name: 'Td/TT in Pregnancy', totalDoses: 2, gender: 'Female' },
-  { name: 'Rubella (Pre-marital / Pre-conception)', totalDoses: 1, gender: 'Female' },
-];
+import { VACCINE_REFERENCE } from '../data/vaccineReference';
  
 export default function AddVaccineModal({ profileId, profile, onClose, onAdded }) {
   const availableVaccines = profile?.category === 'Pet'
-    ? PET_VACCINES.filter(v => v.petType === profile?.petType)
-    : VACCINES.filter(v => v.gender === 'All' || v.gender === profile?.gender);
- 
+    ? VACCINE_REFERENCE.filter(v => v.petType === profile?.petType)
+    : VACCINE_REFERENCE.filter(v => !v.petType && (v.gender === 'All' || v.gender === profile?.gender));
   const [vaccineName, setVaccineName] = useState(availableVaccines[0]?.name || '');
   const [searchQuery, setSearchQuery] = useState(availableVaccines[0]?.name || '');
   const [isFocused, setIsFocused] = useState(false);

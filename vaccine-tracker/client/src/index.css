@@ -230,10 +230,13 @@ input:focus, select:focus { outline: 2px solid rgba(47, 111, 94, 0.18); border-c
 .feature-card h4 { margin-top: 0; color: var(--ink); }
 .feature-card p { color: var(--ink-soft); margin-bottom: 0; }
 
-.status-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.status-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
 .status-col {
-  flex: 1;
-  min-width: 220px;
+  min-width: 0;
   border-radius: 16px;
   padding: 16px;
   background: rgba(250, 246, 236, 0.75);
@@ -345,10 +348,58 @@ input:focus, select:focus { outline: 2px solid rgba(47, 111, 94, 0.18); border-c
 
 .vaccine-info-card__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.vaccine-info-card__subtitle {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+.vaccine-info-card__section {
+  margin-top: 16px;
+}
+
+.vaccine-info-card__section p,
+.vaccine-info-card__section ul {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+}
+
+.vaccine-info-card__section ul {
+  padding-left: 18px;
+}
+
+.symptom-tier {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--paper-line);
+  margin-top: 12px;
+}
+
+.symptom-tier--common {
+  background: rgba(47, 111, 94, 0.08);
+}
+
+.symptom-tier--alert {
+  background: rgba(178, 58, 46, 0.08);
+}
+
+.symptom-tier__caption {
+  margin: 4px 0 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.source-note {
+  margin-top: 16px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-style: italic;
 }
 
 .relationship-stamp {
