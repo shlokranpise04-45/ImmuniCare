@@ -34,14 +34,28 @@ export default function AddVaccineModal({ profileId, profile, onClose, onAdded }
 
   const selectedVaccine = availableVaccines.find(v => v.name === vaccineName) || availableVaccines[0];
   const doseOptions = Array.from({ length: selectedVaccine?.totalDoses || 0 }, (_, i) => i + 1);
-  const isDateTakenValid = (value) => {
+    const isDateTakenValid = (value) => {
     if (!value) return false;
     const parsed = new Date(`${value}T00:00:00`);
     return !Number.isNaN(parsed.getTime());
   };
+  
+  const isFutureDate = (value) => {
+    if (!value) return false;
+    const parsed = new Date(`${value}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return parsed > today;
+  };
+
   const warning = dateTaken && isDateTakenValid(dateTaken)
     ? getAgeWindowWarning(selectedVaccine, profile, dateTaken)
     : null;
+    
+  const futureNote = isFutureDate(dateTaken) 
+    ? "This will be recorded as a scheduled/future dose."
+    : null;
+
   const filteredVaccines = availableVaccines.filter(v => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
@@ -119,7 +133,7 @@ export default function AddVaccineModal({ profileId, profile, onClose, onAdded }
         </select>
  
         <label className="field-label">Date taken</label>
-        <input
+                <input
           type="date"
           value={dateTaken}
           onChange={(e) => {
@@ -128,6 +142,8 @@ export default function AddVaccineModal({ profileId, profile, onClose, onAdded }
           }}
         />
         {warning && <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginTop: 4 }}>{warning}</p>}
+        {futureNote && <p style={{ color: 'var(--brand-blue)', fontSize: 13, marginTop: 4 }}>{futureNote}</p>}
+
  
         {error && <p style={{ color: 'var(--stamp-red)', fontSize: 13, marginTop: 4 }}>{error}</p>}
  
