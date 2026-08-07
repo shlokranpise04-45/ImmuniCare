@@ -1,6 +1,9 @@
 const Profile = require('../models/Profile');
 const PetEntry = require('../models/PetEntry');
 const FamilyEntry = require('../models/FamilyEntry');
+const VaccineRecord = require('../models/VaccineRecord');
+const { resetUpcomingReminderFlagsForProfile } = require('../utils/reminderUtils');
+const { checkAndSendUpcomingReminders } = require('../utils/reminderService');
  
 exports.getProfiles = async (req, res) => {
   const category = req.query.category;
@@ -48,6 +51,7 @@ async function createProfile(req, res, forcedCategory) {
           ...(pregnancyDueDate ? { pregnancyDueDate } : {}),
         };
     const profile = await Profile.create(profileData);
+    // New profiles may not yet have any vaccine records saved. Do not trigger reminders until there are saved VaccineRecord documents.
     res.status(201).json(profile);
   } catch (err) {
     console.error(`Failed to create ${forcedCategory || 'profile'}:`, err.message);
@@ -77,6 +81,7 @@ exports.updateProfile = async (req, res) => {
     const profile = await Profile.findOne({ _id: req.params.id, userId: req.userId });
     if (!profile) return res.status(404).json({ message: 'Profile not found' });
 
+    const previousRecords = await VaccineRecord.find({ profileId: profile._id });
     const fields = profile.category === 'Pet'
       ? ['name', 'dob', 'gender', 'petType', 'breed']
       : ['name', 'dob', 'gender', 'relationship', 'isPregnant', 'pregnancyStatus', 'pregnancyDueDate'];
@@ -84,6 +89,10 @@ exports.updateProfile = async (req, res) => {
       if (req.body[field] !== undefined) profile[field] = req.body[field];
     });
     await profile.save();
+
+    resetUpcomingReminderFlagsForProfile(profile, previousRecords).catch((resetErr) => {
+      console.error('Failed to reset upcoming reminder flags after updating profile:', resetErr);
+    });
     res.json(profile);
   } catch (err) {
     console.error('Failed to update profile:', err.message);

@@ -191,7 +191,7 @@ const generateVaccinationPdf = (profile, status, petHistory = []) => {
   return pdf;
 };
 
-const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
+const sendBrevoEmail = async ({ toEmail, subject, htmlContent, attachments = [] }) => {
   const config = getBrevoConfig();
   if (config.error) {
     console.error('Email configuration error:', config.error);
@@ -202,13 +202,45 @@ const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
   }
 
   try {
-    const pdfBuffer = await generateVaccinationPdf(profile, status, petHistory);
-    const pdfBase64 = pdfBuffer.toString('base64');
-    const safeName = escapeHtml(profile.name || 'your patient');
-    const overdueList = status.overdue.map(v => `<li style="margin-bottom:8px;">${escapeHtml(v.name)} — ${escapeHtml(v.nextDoseLabel)} <span style="color:#64748b;">(recommended at ${escapeHtml(formatMonths(v.nextDose?.ageMonths))})</span></li>`).join('');
-    const upcomingList = status.upcoming.map(v => `<li style="margin-bottom:8px;">${escapeHtml(v.name)} — ${escapeHtml(v.nextDoseLabel)} <span style="color:#64748b;">(recommended at ${escapeHtml(formatMonths(v.nextDose?.ageMonths))})</span></li>`).join('');
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': config.apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { email: config.fromEmail, name: config.fromName },
+        to: [{ email: toEmail }],
+        subject,
+        htmlContent,
+        attachment: attachments,
+      }),
+    });
 
-    const html = `
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Email send failed:', response.status, errText);
+      if (response.status === 401) {
+        return { success: false, message: 'Brevo rejected the API key. Set BREVO_API_KEY to an active Brevo transactional-email API key in server/.env.' };
+      }
+      if ((response.status === 400 || response.status === 403) && /sender|from|verified/i.test(errText)) {
+        return { success: false, message: `Brevo rejected EMAIL_FROM (${config.fromEmail}). Verify this sender or domain in Brevo before sending.` };
+      }
+      return { success: false, message: `Email service rejected the request (${response.status}): ${errText}` };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Email send failed:', err);
+    return { success: false, message: `Email send failed: ${err.message}` };
+  }
+};
+
+const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
+  const pdfBuffer = await generateVaccinationPdf(profile, status, petHistory);
+  const pdfBase64 = pdfBuffer.toString('base64');
+  const safeName = escapeHtml(profile.name || 'your patient');
+  const html = `
     <div style="background:#f8fafc;padding:32px;font-family:Segoe UI, Arial, sans-serif;color:#0f172a;">
       <div style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 16px 40px rgba(15,23,42,0.08);">
         <div style="background:linear-gradient(135deg,#0f766e 0%,#2563eb 100%);padding:28px 32px;color:#ffffff;">
@@ -237,43 +269,63 @@ const sendReminderEmail = async (toEmail, profile, status, petHistory = []) => {
       </div>
     </div>
     `;
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'api-key': config.apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        sender: { email: config.fromEmail, name: config.fromName },
-        to: [{ email: toEmail }],
-        subject: `ImmuniCare vaccination report — ${profile.name}`,
-        htmlContent: html,
-        attachment: [
-          {
-            content: pdfBase64,
-            name: `${profile.name.replace(/\s+/g, '_')}_vaccination_report.pdf`,
-          },
-        ],
-      }),
-    });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Email send failed:', response.status, errText);
-      if (response.status === 401) {
-        return { success: false, message: 'Brevo rejected the API key. Set BREVO_API_KEY to an active Brevo API key (not a Resend key) and restart the server.' };
-      }
-      if ((response.status === 400 || response.status === 403) && /sender|from|verified/i.test(errText)) {
-        return { success: false, message: `Brevo rejected EMAIL_FROM (${config.fromEmail}). Verify this sender email or its domain in Brevo before sending.` };
-      }
-      return { success: false, message: `Email service rejected the request (${response.status}): ${errText}` };
-    }
-    return { success: true };
-  } catch (err) {
-    console.error('Email send failed:', err);
-    return { success: false, message: `Email send failed: ${err.message}` };
+  return sendBrevoEmail({
+    toEmail,
+    subject: `ImmuniCare vaccination report — ${profile.name}`,
+    htmlContent: html,
+    attachments: [
+      {
+        content: pdfBase64,
+        name: `${profile.name.replace(/\s+/g, '_')}_vaccination_report.pdf`,
+      },
+    ],
+  });
+};
+
+const sendGroupedUpcomingReminderEmail = async (toEmail, userName, upcomingItems, profileAttachments) => {
+  if (!upcomingItems.length) {
+    return { success: false, message: 'No upcoming items to include in the notification.' };
   }
+
+  const safeUser = escapeHtml(userName || 'ImmuniCare user');
+  const itemsHtml = upcomingItems.map((item) => `
+      <li style="margin-bottom:10px;">
+        <strong>${escapeHtml(item.vaccineName)}</strong> for <em>${escapeHtml(item.profileName)}</em> — due ${escapeHtml(item.dueDate)}
+      </li>
+    `).join('');
+
+  const html = `
+    <div style="background:#f8fafc;padding:32px;font-family:Segoe UI, Arial, sans-serif;color:#0f172a;">
+      <div style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 16px 40px rgba(15,23,42,0.08);">
+        <div style="background:linear-gradient(135deg,#0f766e 0%,#2563eb 100%);padding:28px 32px;color:#ffffff;">
+          <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.9;">ImmuniCare</div>
+          <h1 style="margin:8px 0 8px;font-size:26px;line-height:1.2;">New upcoming vaccines waiting</h1>
+          <p style="margin:0;font-size:15px;line-height:1.6;opacity:0.95;">You have new upcoming vaccinations across your ImmuniCare profiles. See the full summary attached.</p>
+        </div>
+        <div style="padding:32px;">
+          <p style="margin:0 0 12px;font-size:15px;">Hello ${safeUser},</p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#334155;">The following new upcoming vaccines are ready for review:</p>
+          <ul style="margin:8px 0 22px 18px;padding:0;line-height:1.8;color:#334155;">
+            ${itemsHtml}
+          </ul>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#334155;">You have new upcoming vaccinations. See the full summary attached.</p>
+          <p style="margin:0;font-size:14px;line-height:1.7;color:#64748b;">If you would like help planning the next dose, open ImmuniCare and review the attached report.</p>
+        </div>
+        <div style="padding:0 32px 28px;color:#64748b;font-size:13px;line-height:1.6;">
+          Kind regards,<br/>
+          <strong>The ImmuniCare team</strong>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendBrevoEmail({
+    toEmail,
+    subject: 'ImmuniCare upcoming vaccine reminder',
+    htmlContent: html,
+    attachments: profileAttachments,
+  });
 };
 
 const sendPasswordResetEmail = async (toEmail, resetUrl) => {
@@ -329,4 +381,4 @@ const sendPasswordResetEmail = async (toEmail, resetUrl) => {
   }
 };
 
-module.exports = { sendReminderEmail, sendPasswordResetEmail, generateVaccinationPdf, shouldForcePageBreak };
+module.exports = { sendReminderEmail, sendPasswordResetEmail, sendGroupedUpcomingReminderEmail, generateVaccinationPdf, shouldForcePageBreak };

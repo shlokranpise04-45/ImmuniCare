@@ -1,5 +1,6 @@
 const Profile = require('../models/Profile');
 const FamilyEntry = require('../models/FamilyEntry');
+const { checkAndSendUpcomingReminders } = require('../utils/reminderService');
 
 const RECORD_TYPES = ['medical_history', 'pregnancy', 'prescription', 'allergy', 'lab_report', 'surgery', 'hospital_visit', 'insurance', 'note', 'other'];
 
@@ -28,6 +29,11 @@ exports.createEntry = async (req, res) => {
       return res.status(400).json({ message: 'A valid record type, title, and date are required' });
     }
     const entry = await FamilyEntry.create({ profileId: profile._id, userId: req.userId, type, title: title.trim(), date, details: details?.trim() || '' });
+    try {
+      await checkAndSendUpcomingReminders(req.userId);
+    } catch (reminderErr) {
+      console.error('Failed to send instant upcoming reminder after creating family entry:', reminderErr);
+    }
     res.status(201).json(entry);
   } catch (err) {
     console.error('Failed to create family entry:', err.message);
