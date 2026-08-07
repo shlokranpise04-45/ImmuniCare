@@ -5,6 +5,7 @@ const vaccineRecordSchema = new mongoose.Schema({
   vaccineName: { type: String, required: true },
   doseNumber: { type: Number, required: true, default: 1 },
   dateTaken: { type: Date, required: true },
+  upcomingReminderSent: { type: Boolean, default: false },
 }, { timestamps: true });
  
 vaccineRecordSchema.index({ profileId: 1, vaccineName: 1, doseNumber: 1 }, { unique: true });
